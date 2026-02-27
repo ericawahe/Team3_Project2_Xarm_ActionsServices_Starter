@@ -72,7 +72,7 @@ A placeholder service interface is included, but is not configured. You must rep
 This package contains several Python nodes.
 
 ### pickup_gui.py
-This is a PyQt5-based action client GUI that will be used to initate the action (action client). When run, it:
+This is a tkinter-based action client GUI that will be used to initate the action (action client). When run, it:
 
 -   Connects to action name: `retrieve_items`
 -   Sends a goal (1--9 items)
@@ -147,13 +147,7 @@ Students must implement:
 
 -   ROS 2 (Humble or newer recommended)
 -   rclpy
--   PyQt5
-
-Install PyQt5 if needed:
-
-``` bash
-sudo apt install python3-pyqt5
-```
+-   tkinter (usually included with standard Python installs)
 
 ------------------------------------------------------------------------
 
