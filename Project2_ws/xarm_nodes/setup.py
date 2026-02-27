@@ -10,7 +10,7 @@ setup(
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools', 'PyQt5'],
+    install_requires=['setuptools'],
     zip_safe=True,
     maintainer='laptopuser',
     maintainer_email='laptopuser@todo.todo',
@@ -23,6 +23,7 @@ setup(
         'console_scripts': [
             'x_arm_hardware_node = xarm_nodes.x_arm_hardware_node:main',
             'pickup_gui = xarm_nodes.pickup_gui:main',
+            'retrieve_items_action_server = xarm_nodes.retrieve_items_action_server:main',
         ],
     },
 )

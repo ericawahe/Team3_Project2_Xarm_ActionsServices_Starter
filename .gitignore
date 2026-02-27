@@ -1,0 +1,8 @@
+# VS Code
+.vscode/
+*.code-workspace
+
+# ROS2 build artifacts
+build/
+install/
+log/

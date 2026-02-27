@@ -28,7 +28,7 @@ retrieval using the HiWonder Xarm 1S.
 
 ## 1️⃣ xarm_pickup_interfaces
 
-This package defines all custom ROS 2 interfaces for the project.
+This package defines all custom ROS 2 interfaces for the project. It does not contain any executable nodes.
 
 ### Action
 
@@ -55,6 +55,10 @@ The action name expected in the graph is:
     retrieve_items
 
 ⚠️ Do not modify this action definition.
+
+#### Service
+
+A placeholder service interface is included, but is not configured. You must replace this with your own service(s) that will be implemented in your nodes.
 
 ------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
+# from xarm_pickup_interfaces.srv import YourServiceType  # TODO(STUDENTS): Import your service types here.
 
 try:
     import xarm
@@ -16,9 +17,9 @@ class XArmHardwareNode(Node):
 
         self._connect_usb()
 
-        # TODO(STUDENTS): Add your service servers here.
+        # TODO(STUDENTS): Add your service servers here. Make sure that all services are defined in the xarm_pickup_interfaces package and that you import them at the top of this file.
         # Example:
-        # self.create_service(YourServiceType, 'service_name', self.handle_service_name)
+        # self.create_service(YourServiceType, 'service_name', self.service_callback)
 
         self.get_logger().info('x_arm_hardware_node is running.')
 
@@ -33,11 +34,16 @@ class XArmHardwareNode(Node):
         except Exception as exc:
             self.get_logger().error(f'Failed to connect to xArm over USB: {exc}')
 
-        # TODO(STUDENTS): Hardware communications live here and in helper methods you add below.
-        # Suggestions:
-        # 1) Wrap low-level arm calls in methods (move_joint, set_gripper, read_state).
-        # 2) Validate bounds before sending commands.
-        # 3) Return clear success/failure info to service callbacks.
+    # TODO(STUDENTS): Add your service callback methods here.
+    # Suggestions:
+    # 1) Validate inputs before sending commands (e.g. are joint angles within limits?).
+    # 2) Return clear success/failure info to the caller via the response object.
+    #
+    # Example:
+    # def service_callback(self, request, response):
+    #     # ... perform arm action ...
+    #     response.success = True
+    #     return response
 
 
 def main(args=None):

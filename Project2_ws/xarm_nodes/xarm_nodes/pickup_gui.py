@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
+"""
+pickup_gui.py — Pre-built GUI client for the xArm pickup action.
 
+NOTE FOR STUDENTS: You do not need to modify this file.
+Run it as-is to interact with the RetrieveItems action server you implement
+in your action server node.
+
+Overview:
+  - PickupGuiWindow     : tkinter window that lets the operator set the number
+                          of items to collect, trigger the action, and cancel it.
+  - XarmPickupGuiClient : ROS2 action client that sends RetrieveItems goals,
+                          processes feedback, and handles results/cancellation.
+
+Thread safety:
+  tkinter is not thread-safe, so all GUI updates are posted through a
+  queue.Queue. The window polls that queue every 50 ms via tkinter's
+  after() scheduler and applies updates on the main thread.
+"""
+
+import queue
 import sys
 import threading
+import tkinter as tk
+from tkinter import ttk
 
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import (
-    QApplication,
-    QGridLayout,
-    QLabel,
-    QPushButton,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
-)
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -20,188 +31,211 @@ from rclpy.node import Node
 from xarm_pickup_interfaces.action import RetrieveItems
 
 
-class UiBridge(QObject):
-    status_text = pyqtSignal(str)
-    current_state = pyqtSignal(str)
-    current_box = pyqtSignal(str)
-    items_collected = pyqtSignal(str)
-    goal_active = pyqtSignal(bool)
-
-
 class XarmPickupGuiClient(Node):
-    def __init__(self, bridge: UiBridge):
+    """ROS2 action client node for the RetrieveItems action.
+
+    Runs inside a background thread (see _spin_ros) so that ROS callbacks do
+    not block the tkinter event loop. All GUI updates are posted to ui_queue
+    as (key, value) tuples and consumed by PickupGuiWindow._poll_queue().
+    """
+
+    def __init__(self, ui_queue: queue.Queue):
         super().__init__('xarm_pickup_gui_client')
-        self.bridge = bridge
+        self.ui_queue = ui_queue          # Thread-safe channel to the GUI
         self.action_client = ActionClient(self, RetrieveItems, 'retrieve_items')
         self.goal_handle = None
-        self._goal_lock = threading.Lock()
+        self._goal_lock = threading.Lock()  # Protects self.goal_handle across threads
+
+    def _post(self, key: str, value):
+        """Post a GUI update to the queue."""
+        self.ui_queue.put((key, value))
 
     def send_goal(self, num_items: int):
+        """Send a RetrieveItems goal to the action server."""
         if not self.action_client.wait_for_server(timeout_sec=2.0):
-            self.bridge.status_text.emit('Server not available')
-            self.bridge.goal_active.emit(False)
+            self._post('status', 'Server not available')
+            self._post('goal_active', False)
             return
 
         goal_msg = RetrieveItems.Goal()
         goal_msg.num_items = num_items
 
-        self.bridge.status_text.emit(f'Sending goal: num_items={num_items}')
-        send_future = self.action_client.send_goal_async(goal_msg, feedback_callback=self._feedback_callback)
+        self._post('status', f'Sending goal: num_items={num_items}')
+        send_future = self.action_client.send_goal_async(
+            goal_msg, feedback_callback=self._feedback_callback
+        )
         send_future.add_done_callback(self._goal_response_callback)
 
     def _goal_response_callback(self, future):
+        """Called when the server accepts or rejects the goal."""
         goal_handle = future.result()
         if not goal_handle.accepted:
-            self.bridge.status_text.emit('Goal rejected')
-            self.bridge.goal_active.emit(False)
+            self._post('status', 'Goal rejected')
+            self._post('goal_active', False)
             return
 
         with self._goal_lock:
             self.goal_handle = goal_handle
 
-        self.bridge.status_text.emit('Goal accepted')
-        self.bridge.goal_active.emit(True)
+        self._post('status', 'Goal accepted')
+        self._post('goal_active', True)
 
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self._result_callback)
 
     def _feedback_callback(self, feedback_msg):
+        """Forward action feedback fields to the GUI via the queue."""
         feedback = feedback_msg.feedback
         box_text = str(feedback.current_box) if feedback.current_box >= 0 else 'N/A'
 
-        self.bridge.current_state.emit(feedback.state)
-        self.bridge.current_box.emit(box_text)
-        self.bridge.items_collected.emit(str(feedback.items_collected))
-        self.bridge.status_text.emit('Feedback received')
+        self._post('state', feedback.state)
+        self._post('box', box_text)
+        self._post('items', str(feedback.items_collected))
+        self._post('status', 'Feedback received')
 
     def _result_callback(self, future):
+        """Called when the action finishes (success, failure, or cancelled)."""
         result = future.result().result
-        self.bridge.status_text.emit(
-            f'Done: success={result.success} items={result.items_collected}'
-        )
-        self.bridge.goal_active.emit(False)
+        self._post('status', f'Done: success={result.success} items={result.items_collected}')
+        self._post('goal_active', False)
 
         with self._goal_lock:
             self.goal_handle = None
 
     def cancel_goal(self):
+        """Request cancellation of the currently active goal, if any."""
         with self._goal_lock:
             active_goal = self.goal_handle
 
         if active_goal is None:
-            self.bridge.status_text.emit('No active goal to cancel')
+            self._post('status', 'No active goal to cancel')
             return
 
-        self.bridge.status_text.emit('Cancel requested')
+        self._post('status', 'Cancel requested')
         cancel_future = active_goal.cancel_goal_async()
         cancel_future.add_done_callback(self._cancel_done_callback)
 
     def _cancel_done_callback(self, future):
         cancel_response = future.result()
         if len(cancel_response.goals_canceling) > 0:
-            self.bridge.status_text.emit('Cancel accepted by server')
+            self._post('status', 'Cancel accepted by server')
         else:
-            self.bridge.status_text.emit('Cancel rejected or goal already finished')
+            self._post('status', 'Cancel rejected or goal already finished')
 
 
-class PickupGuiWidget(QWidget):
-    def __init__(self, ros_node: XarmPickupGuiClient, bridge: UiBridge):
-        super().__init__()
+class PickupGuiWindow:
+    """Main tkinter application window.
+
+    Provides controls to set the number of items to collect, send the action
+    goal, cancel an in-progress goal, and display live feedback from the
+    action server.
+    """
+
+    _POLL_MS = 50  # How often (ms) to drain the update queue
+
+    def __init__(self, root: tk.Tk, ros_node: XarmPickupGuiClient, ui_queue: queue.Queue):
+        self.root = root
         self.ros_node = ros_node
-        self.bridge = bridge
+        self.ui_queue = ui_queue
 
-        self.setWindowTitle('Xarm Grid Pickup')
+        root.title('Xarm Grid Pickup')
+        root.resizable(False, False)
+
         self._build_ui()
-        self._connect_signals()
+        self._poll_queue()  # Start the recurring queue-drain loop
 
     def _build_ui(self):
-        layout = QVBoxLayout()
+        pad = {'padx': 8, 'pady': 4}
 
-        self.label_input = QLabel('Number of items (1-9)')
-        self.spin_items = QSpinBox()
-        self.spin_items.setRange(1, 9)
-        self.spin_items.setValue(1)
+        # --- Input row ---
+        input_frame = ttk.Frame(self.root)
+        input_frame.pack(fill='x', **pad)
+        ttk.Label(input_frame, text='Number of items (1–9):').pack(side='left')
+        self._spin_var = tk.IntVar(value=1)
+        ttk.Spinbox(input_frame, from_=1, to=9, textvariable=self._spin_var, width=4).pack(side='left', padx=4)
 
-        self.button_call = QPushButton('Call Action')
-        self.button_cancel = QPushButton('Cancel')
-        self.button_cancel.setEnabled(False)
+        # --- Buttons ---
+        btn_frame = ttk.Frame(self.root)
+        btn_frame.pack(fill='x', **pad)
+        self._btn_call = ttk.Button(btn_frame, text='Call Action', command=self._on_call_action)
+        self._btn_call.pack(side='left', padx=(0, 4))
+        self._btn_cancel = ttk.Button(btn_frame, text='Cancel', command=self._on_cancel_action, state='disabled')
+        self._btn_cancel.pack(side='left')
 
-        status_layout = QGridLayout()
-        status_layout.addWidget(QLabel('Status'), 0, 0)
-        status_layout.addWidget(QLabel('Current state'), 1, 0)
-        status_layout.addWidget(QLabel('Current box'), 2, 0)
-        status_layout.addWidget(QLabel('Items collected'), 3, 0)
+        # --- Status grid ---
+        status_frame = ttk.LabelFrame(self.root, text='Status')
+        status_frame.pack(fill='x', **pad)
 
-        self.value_status = QLabel('Idle')
-        self.value_state = QLabel('-')
-        self.value_box = QLabel('-')
-        self.value_items = QLabel('0')
+        labels = [('Status', 'Idle'), ('Current state', '—'), ('Current box', '—'), ('Items collected', '0')]
+        self._value_status = tk.StringVar(value='Idle')
+        self._value_state  = tk.StringVar(value='—')
+        self._value_box    = tk.StringVar(value='—')
+        self._value_items  = tk.StringVar(value='0')
+        string_vars = [self._value_status, self._value_state, self._value_box, self._value_items]
 
-        status_layout.addWidget(self.value_status, 0, 1)
-        status_layout.addWidget(self.value_state, 1, 1)
-        status_layout.addWidget(self.value_box, 2, 1)
-        status_layout.addWidget(self.value_items, 3, 1)
+        for row, ((lbl, _), var) in enumerate(zip(labels, string_vars)):
+            ttk.Label(status_frame, text=lbl).grid(row=row, column=0, sticky='w', **pad)
+            ttk.Label(status_frame, textvariable=var, width=30, anchor='w').grid(row=row, column=1, sticky='w', **pad)
 
-        layout.addWidget(self.label_input)
-        layout.addWidget(self.spin_items)
-        layout.addWidget(self.button_call)
-        layout.addWidget(self.button_cancel)
-        layout.addLayout(status_layout)
-
-        self.setLayout(layout)
-
-    def _connect_signals(self):
-        self.button_call.clicked.connect(self._on_call_action)
-        self.button_cancel.clicked.connect(self._on_cancel_action)
-
-        self.bridge.status_text.connect(self.value_status.setText)
-        self.bridge.current_state.connect(self.value_state.setText)
-        self.bridge.current_box.connect(self.value_box.setText)
-        self.bridge.items_collected.connect(self.value_items.setText)
-        self.bridge.goal_active.connect(self._set_goal_active)
+    def _poll_queue(self):
+        """Drain all pending GUI updates from the queue and apply them."""
+        try:
+            while True:
+                key, value = self.ui_queue.get_nowait()
+                if key == 'status':
+                    self._value_status.set(value)
+                elif key == 'state':
+                    self._value_state.set(value)
+                elif key == 'box':
+                    self._value_box.set(value)
+                elif key == 'items':
+                    self._value_items.set(value)
+                elif key == 'goal_active':
+                    self._set_goal_active(value)
+        except queue.Empty:
+            pass
+        finally:
+            # Reschedule unconditionally so the loop keeps running
+            self.root.after(self._POLL_MS, self._poll_queue)
 
     def _on_call_action(self):
-        num_items = self.spin_items.value()
         self._set_goal_active(True)
-
-        send_thread = threading.Thread(
+        threading.Thread(
             target=self.ros_node.send_goal,
-            args=(num_items,),
+            args=(self._spin_var.get(),),
             daemon=True,
-        )
-        send_thread.start()
+        ).start()
 
     def _on_cancel_action(self):
         self.ros_node.cancel_goal()
 
     def _set_goal_active(self, active: bool):
-        self.button_call.setEnabled(not active)
-        self.button_cancel.setEnabled(active)
+        self._btn_call.config(state='disabled' if active else 'normal')
+        self._btn_cancel.config(state='normal' if active else 'disabled')
 
 
 def _spin_ros(node: Node):
+    """Spin the ROS node in a background thread so it does not block tkinter."""
     rclpy.spin(node)
 
 
 def main(args=None):
     rclpy.init(args=args)
 
-    bridge = UiBridge()
-    ros_node = XarmPickupGuiClient(bridge)
+    ui_queue = queue.Queue()
+    ros_node = XarmPickupGuiClient(ui_queue)
 
     ros_thread = threading.Thread(target=_spin_ros, args=(ros_node,), daemon=True)
     ros_thread.start()
 
-    app = QApplication(sys.argv)
-    widget = PickupGuiWidget(ros_node, bridge)
-    widget.show()
-
-    exit_code = app.exec_()
+    root = tk.Tk()
+    PickupGuiWindow(root, ros_node, ui_queue)
+    root.mainloop()
 
     ros_node.destroy_node()
     rclpy.shutdown()
-    return exit_code
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()
+
