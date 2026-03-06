@@ -9,6 +9,7 @@ You will need to:
   3. Fill in goal_callback, cancel_callback, and execute_callback.
 """
 
+import time
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer
@@ -104,13 +105,18 @@ class RetrieveItemsActionServer(Node):
                 result.success = False
                 result.message = 'Goal failed.'
                 return result
+            
+            req = SetGripper.Request()
+            req.state = 'open'
+            future = self.set_gripper_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
 
             #move to index cell
             req = MoveToCell.Request()
             req.box_index = index
             future = self.move_to_cell_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
-
+            time.sleep(2.0)
             feedback_msg.state = 'searching'
             feedback_msg.current_box = index
 
@@ -128,17 +134,13 @@ class RetrieveItemsActionServer(Node):
             resp = future.result()
 
             #attempt to move grasped item to dropoff location
-            if resp.position <= 750: # not fully closed -> object has been grasped!
+            if resp.position <= 625: # not fully closed -> object has been grasped!
                 items_so_far += 1
                 req = MoveGraspedToDeposit.Request()
                 req.item_grasped = True
                 future = self.move_grasped_to_deposit_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
-            else: # fully closed therefore no object was grasped :(
-                req = MoveGraspedToDeposit.Request()
-                req.item_grasped = False
-                future = self.move_grasped_to_deposit_client.call_async(req)
-                rclpy.spin_until_future_complete(self, future)
+
 
             feedback_msg.items_collected = items_so_far
             goal_handle.publish_feedback(feedback_msg)

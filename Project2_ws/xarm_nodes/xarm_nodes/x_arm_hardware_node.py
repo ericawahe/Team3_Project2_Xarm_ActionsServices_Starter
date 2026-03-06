@@ -23,7 +23,7 @@ class XArmHardwareNode(Node):
         [332, 498, 818, 163, 542, 386], # cell 3
         [332, 498, 739, 190, 593, 610], # cell 4
         [332, 498, 767, 170, 565, 507], # cell 5
-        [332, 498, 768, 204, 590, 421], # cell 6
+        [332, 450, 768, 204, 590, 421], # cell 6
         [332, 498, 704, 256, 661, 586], # cell 7
         [332, 498, 736, 261, 651, 510], # cell 8
         [332, 499, 704, 261, 660, 436], # cell 9
@@ -93,7 +93,7 @@ class XArmHardwareNode(Node):
         self.arm.setPosition(3, 600, 1300)
         self.arm.setPosition(5, 500, 1300)
         time.sleep(2.0)
-        
+
         servo_target = self.cell_servo_targets[cell]
         for servo_id, target in enumerate(servo_target, start=1):
             self.arm.setPosition(servo_id, target, 1300)
