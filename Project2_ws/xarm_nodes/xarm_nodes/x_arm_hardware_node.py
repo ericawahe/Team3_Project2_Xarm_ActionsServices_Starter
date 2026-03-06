@@ -128,9 +128,26 @@ class XArmHardwareNode(Node):
 
     def GetGripperPosition_callback(self, request, response):
         self.get_logger().info("Getting gripper position")
-        response.position = self.arm.getPosition(1)  # Gripper position
-        self.get_logger().info({response.position})
+        
+        # Read all servo angles (degrees)
+        code, angles = self.arm.get_servo_angle(is_radian=False)
+
+        if code != 0:
+            self.get_logger().error(f"Failed to read servo angles, code={code}")
+            response.success = False
+            return response
+
+        # Assuming gripper is servo 1 (index 0)
+        gripper_angle_deg = angles[0]
+
+        #Convert angle to counts (xArm servos use 0.1° per count)
+        counts = int(gripper_angle_deg / 0.1)
+
+        response.position = counts
         response.success = True
+
+        self.get_logger().info(f"Gripper position (counts): {counts}")
+
         return response
 
     def SetGripper_callback(self, request, response):
