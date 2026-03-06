@@ -16,7 +16,13 @@ from rclpy.action import CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
 
 from xarm_pickup_interfaces.action import RetrieveItems
-# from xarm_pickup_interfaces.srv import YourServiceType  # TODO(STUDENTS): Import your service types here.
+from xarm_pickup_interfaces.srv import (
+    MoveToCell,
+    MoveGraspedToCell,
+    GetGripperPosition,
+    SetGripper,
+)
+# TODO(STUDENTS): Import your service types here.
 
 
 class RetrieveItemsActionServer(Node):
@@ -25,9 +31,19 @@ class RetrieveItemsActionServer(Node):
     def __init__(self):
         super().__init__('retrieve_items_action_server')
 
-        # TODO(STUDENTS): Create service clients here for any hardware services you need.
-        # Example:
-        # self._your_client = self.create_client(YourServiceType, 'service_name')
+        # Create service clients for the hardware services we will call.
+        self.move_to_cell_client = self.create_client(MoveToCell, 'Move_To_Cell')
+        self.move_grasped_to_cell_client = self.create_client(MoveGraspedToCell, 'Move_Grasped_To_Cell')
+        self.get_gripper_pos_client = self.create_client(GetGripperPosition, 'GetGripperPosition')
+        self.set_gripper_client = self.create_client(SetGripper, 'SetGripper')
+
+        # Wait for the service servers to become available.
+        self.get_logger().info("Waiting for service servers...")
+        self.move_to_cell_client.wait_for_service()
+        self.move_grasped_to_cell_client.wait_for_service()
+        self.set_gripper_client.wait_for_service()
+        self.get_gripper_pos_client.wait_for_service()
+        self.get_logger().info("Hardware services connected.")
 
         self._action_server = ActionServer(
             self,
@@ -46,8 +62,13 @@ class RetrieveItemsActionServer(Node):
         TODO(STUDENTS): Add any validation logic here (e.g. reject if num_items is out of range).
         Return GoalResponse.REJECT to refuse a goal before execution begins.
         """
-        self.get_logger().info(f'Received goal: num_items={goal_request.num_items}')
-        return GoalResponse.ACCEPT
+        num = goal_request.num_items
+        if 1 <= num <= 9:
+            self.get_logger().info(f'Received goal: num_items={num}')
+            return GoalResponse.ACCEPT
+        else:
+            self.get_logger().warn(f'Goal rejected: num_items={num} out of range')
+            return GoalResponse.REJECT
 
     def cancel_callback(self, goal_handle):
         """Accept or reject a cancel request for an active goal.
@@ -60,17 +81,93 @@ class RetrieveItemsActionServer(Node):
     async def execute_callback(self, goal_handle):
         """Execute the RetrieveItems goal.
 
-        This method is called in its own thread by the MultiThreadedExecutor,
-        so blocking calls are safe here. It must publish feedback periodically
-        and return a populated Result when finished.
-
-        TODO(STUDENTS): Implement the pick-and-place loop here.
+        This method runs in a separate thread via the MultiThreadedExecutor.
+        It publishes feedback and returns a Result when the goal finishes.
         """
         self.get_logger().info('Executing goal...')
 
+        num_items = goal_handle.request.num_items
         feedback_msg = RetrieveItems.Feedback()
         result = RetrieveItems.Result()
 
+      
+        index = 0
+        items_so_far = 0
+
+        while (items_so_far < num_items):
+
+            if index < 9: index +=1 # index initialized as zero, add one to move to the first box and so on
+            else: 
+                print('\nAll cells searched, not enough objects found.')
+                 # if index = 9 all boxes searched and not enough objects found so cancel
+
+            #move to index cell
+            req = MoveToCell.Request()
+            req.box_index = index
+            future = self.move_to_cell_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+
+            #attempt to grasp object
+            req = SetGripper.Request()
+            req.state = 'close'
+            future = self.set_gripper_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+
+            req = GetGripperPosition.Request()
+            pose = self.get_gripper_pos_client.call_async(req)
+
+            #attempt to move grasped item to dropoff location
+            if pose.position <= 750: # not fully closed -> object has been grasped!
+                items_so_far += 1
+                req = MoveGraspedToCell.Request()
+                req.item_grasped = True
+                future = self.move_grasped_to_cell_client.call_async(req)
+                rclpy.spin_until_future_complete(self, future)
+            else: # fully closed therefore no object was grasped :(
+                req = MoveGraspedToCell.Request()
+                req.item_grasped = False
+                future = self.move_grasped_to_cell_client.call_async(req)
+                rclpy.spin_until_future_complete(self, future)
+
+
+            
+
+            '''
+
+            if (gripper cant fully close):
+                object grasped!
+                items_so_far ++
+                move to drop off
+                drop item
+            else (no object grasped):
+                maybe return home maybe do nothing
+            
+            if (index < 9):
+                index ++
+
+            check to see if we need to cancel (this could go at the start or the end)
+
+            
+
+            print("getting object from cell number ", index, "\n")
+            self.Move_To_Cell_client(index) # move to the next cell
+            self.SetGripper_client(closed) # attempt to close gripper
+            bool open = GetGripperPosition # if open return true, if closed return false
+
+            if open == True :
+                print("object grasped from cell ", index, "! \n")
+                items_so_far += 1 # you have gained one new item
+                self.Move_To_Cell_client(-1) # move to drop off location
+                self.SetGripper_client(open) # open the gripper
+            else :
+                print("no object found :( \n")
+
+            if index<9 :
+                index += 1 #now we can move to the next cell
+        '''
+            # NOW CHECK FOR CANCELLATION REQUEST
+
+      
         # TODO(STUDENTS): Implement your item retrieval loop.
         # A typical loop might:
         #   1. Determine the next grid box to visit.
@@ -123,3 +220,25 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
+"""
+# ================= COPY/PASTE BELOW =================
+gripper_closed_count = 700
+gripper_open_count   = 332
+
+POSITIONS = {
+    0: [332, 500, 500, 500, 500, 500],
+    1: [332, 499, 799, 139, 528, 631],
+    2: [332, 498, 852, 158, 528, 510],
+    3: [332, 498, 818, 163, 542, 386],
+    4: [332, 498, 739, 190, 593, 610],
+    5: [332, 498, 767, 170, 565, 507],
+    6: [332, 498, 768, 204, 590, 421],
+    7: [332, 498, 704, 256, 661, 586],
+    8: [332, 498, 736, 261, 651, 510],
+    9: [332, 499, 704, 261, 660, 436],
+}
+
+POSITION_DROP = [700, 498, 864, 264, 561, 145]
+# ================== COPY/PASTE ABOVE =================
+"""
