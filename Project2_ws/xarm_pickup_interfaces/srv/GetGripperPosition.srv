@@ -3,5 +3,6 @@ int32 position
 
 ---
 # Placeholder service response for students to replace.
+int32 position
 bool success
 string message

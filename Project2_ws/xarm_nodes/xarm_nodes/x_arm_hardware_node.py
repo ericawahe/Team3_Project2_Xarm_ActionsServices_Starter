@@ -89,6 +89,11 @@ class XArmHardwareNode(Node):
             response.success = False
             return response
 
+        # Move up to avoid obstacles
+        self.arm.setPosition(3, 600, 1300)
+        self.arm.setPosition(5, 500, 1300)
+        time.sleep(2.0)
+        
         servo_target = self.cell_servo_targets[cell]
         for servo_id, target in enumerate(servo_target, start=1):
             self.arm.setPosition(servo_id, target, 1300)
@@ -143,11 +148,12 @@ class XArmHardwareNode(Node):
         #Convert angle to counts (xArm servos use 0.1° per count)
         #counts = int(gripper_angle_deg / 0.1)
 
+        pose = request.position
         SERVO_IDS = [1, 2, 3, 4, 5, 6]
         vals = [self.arm.getPosition(servo_id) for servo_id in SERVO_IDS]
-        position = vals[1]
+        pose = vals[0]
 
-        response.position = position
+        response.position = pose
         response.success = True
 
         #self.get_logger().info(f"Gripper position (counts): {counts}")
