@@ -108,7 +108,8 @@ class RetrieveItemsActionServer(Node):
             #move to index cell
             req = MoveToCell.Request()
             req.box_index = index
-            response = await self.move_to_cell_client.call_async(req)
+            future = self.move_to_cell_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
 
             feedback_msg.state = 'searching'
             feedback_msg.current_box = index
@@ -116,21 +117,27 @@ class RetrieveItemsActionServer(Node):
             #attempt to grasp object
             req = SetGripper.Request()
             req.state = 'close'
-            response = await self.set_gripper_client.call_async(req)
+            future = self.set_gripper_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+
 
             req = GetGripperPosition.Request()
-            pose = await self.get_gripper_pos_client.call_async(req)
+            future = self.get_gripper_pos_client.call_async(req)
+            rclpy.spin_until_future_complete(self, future)
+            resp = future.result()
 
             #attempt to move grasped item to dropoff location
-            if pose.position <= 750: # not fully closed -> object has been grasped!
+            if resp.position <= 750: # not fully closed -> object has been grasped!
                 items_so_far += 1
                 req = MoveGraspedToDeposit.Request()
                 req.item_grasped = True
-                response = await self.move_grasped_to_deposit_client.call_async(req)
+                future = self.move_grasped_to_deposit_client.call_async(req)
+                rclpy.spin_until_future_complete(self, future)
             else: # fully closed therefore no object was grasped :(
                 req = MoveGraspedToDeposit.Request()
                 req.item_grasped = False
-                response = await self.move_grasped_to_deposit_client.call_async(req)
+                future = self.move_grasped_to_deposit_client.call_async(req)
+                rclpy.spin_until_future_complete(self, future)
 
             feedback_msg.items_collected = items_so_far
             goal_handle.publish_feedback(feedback_msg)
