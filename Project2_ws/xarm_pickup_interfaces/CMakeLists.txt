@@ -12,7 +12,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/MoveToCell.srv"
   "srv/SetGripper.srv"
   "srv/GetGripperPosition.srv"
-  "srv/MoveGraspedToCell.srv"
+  "srv/MoveGraspedToDeposit.srv"
   "action/RetrieveItems.action"
 )
 
