@@ -129,6 +129,7 @@ class XArmHardwareNode(Node):
     def GetGripperPosition_callback(self, request, response):
         self.get_logger().info("Getting gripper position")
         response.position = self.arm.getPosition(1)  # Gripper position
+        self.get_logger().info({response.position})
         response.success = True
         return response
 
