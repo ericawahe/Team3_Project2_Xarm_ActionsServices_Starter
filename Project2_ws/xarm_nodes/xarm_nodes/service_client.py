@@ -50,8 +50,9 @@ class XArmServiceClient(Node):
         rclpy.spin_until_future_complete(self, future)
         return future.result()
 
-    def get_gripper_position(self):
+    def get_gripper_position(self, position: int):
         req = GetGripperPosition.Request()
+        req.position = position
         future = self.get_gripper_pos_client.call_async(req)
         rclpy.spin_until_future_complete(self, future)
         return future.result()
