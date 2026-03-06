@@ -122,6 +122,7 @@ class RetrieveItemsActionServer(Node):
 
 
             req = GetGripperPosition.Request()
+            req.position = 500 #initialize position value
             future = self.get_gripper_pos_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
             resp = future.result()
