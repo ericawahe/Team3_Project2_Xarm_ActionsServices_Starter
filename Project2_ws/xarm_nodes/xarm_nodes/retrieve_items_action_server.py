@@ -18,7 +18,7 @@ from rclpy.executors import MultiThreadedExecutor
 from xarm_pickup_interfaces.action import RetrieveItems
 from xarm_pickup_interfaces.srv import (
     MoveToCell,
-    MoveGraspedToCell,
+    MoveGraspedToDeposit,
     GetGripperPosition,
     SetGripper,
 )
@@ -33,14 +33,14 @@ class RetrieveItemsActionServer(Node):
 
         # Create service clients for the hardware services we will call.
         self.move_to_cell_client = self.create_client(MoveToCell, 'Move_To_Cell')
-        self.move_grasped_to_cell_client = self.create_client(MoveGraspedToCell, 'Move_Grasped_To_Cell')
+        self.move_grasped_to_deposit_client = self.create_client(MoveGraspedToDeposit, 'Move_Grasped_To_Deposit')
         self.get_gripper_pos_client = self.create_client(GetGripperPosition, 'GetGripperPosition')
         self.set_gripper_client = self.create_client(SetGripper, 'SetGripper')
 
         # Wait for the service servers to become available.
         self.get_logger().info("Waiting for service servers...")
         self.move_to_cell_client.wait_for_service()
-        self.move_grasped_to_cell_client.wait_for_service()
+        self.move_grasped_to_deposit_client.wait_for_service()
         self.set_gripper_client.wait_for_service()
         self.get_gripper_pos_client.wait_for_service()
         self.get_logger().info("Hardware services connected.")
@@ -99,73 +99,50 @@ class RetrieveItemsActionServer(Node):
             if index < 9: index +=1 # index initialized as zero, add one to move to the first box and so on
             else: 
                 print('\nAll cells searched, not enough objects found.')
-                 # if index = 9 all boxes searched and not enough objects found so cancel
+                # if index = 9 all boxes searched and not enough objects found so cancel
+                result.success = False
+                result.message = 'Goal failed.'
+                return result
 
             #move to index cell
             req = MoveToCell.Request()
             req.box_index = index
-            future = self.move_to_cell_client.call_async(req)
-            rclpy.spin_until_future_complete(self, future)
+            response = await self.move_to_cell_client.call_async(req)
+
+            feedback_msg.state = 'searching'
+            feedback_msg.current_box = index
 
             #attempt to grasp object
             req = SetGripper.Request()
             req.state = 'close'
-            future = self.set_gripper_client.call_async(req)
-            rclpy.spin_until_future_complete(self, future)
+            response = await self.set_gripper_client.call_async(req)
 
             req = GetGripperPosition.Request()
-            pose = self.get_gripper_pos_client.call_async(req)
+            pose = await self.get_gripper_pos_client.call_async(req)
 
             #attempt to move grasped item to dropoff location
             if pose.position <= 750: # not fully closed -> object has been grasped!
                 items_so_far += 1
-                req = MoveGraspedToCell.Request()
+                req = MoveGraspedToDeposit.Request()
                 req.item_grasped = True
-                future = self.move_grasped_to_cell_client.call_async(req)
-                rclpy.spin_until_future_complete(self, future)
+                response = await self.move_grasped_to_deposit_client.call_async(req)
             else: # fully closed therefore no object was grasped :(
-                req = MoveGraspedToCell.Request()
+                req = MoveGraspedToDeposit.Request()
                 req.item_grasped = False
-                future = self.move_grasped_to_cell_client.call_async(req)
-                rclpy.spin_until_future_complete(self, future)
+                response = await self.move_grasped_to_deposit_client.call_async(req)
+
+            feedback_msg.items_collected = items_so_far
+            goal_handle.publish_feedback(feedback_msg)
 
 
-            
+            # check for cancellation request
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                result.success = False
+                result.message = 'Goal cancelled.'
+                return result
 
-            '''
 
-            if (gripper cant fully close):
-                object grasped!
-                items_so_far ++
-                move to drop off
-                drop item
-            else (no object grasped):
-                maybe return home maybe do nothing
-            
-            if (index < 9):
-                index ++
-
-            check to see if we need to cancel (this could go at the start or the end)
-
-            
-
-            print("getting object from cell number ", index, "\n")
-            self.Move_To_Cell_client(index) # move to the next cell
-            self.SetGripper_client(closed) # attempt to close gripper
-            bool open = GetGripperPosition # if open return true, if closed return false
-
-            if open == True :
-                print("object grasped from cell ", index, "! \n")
-                items_so_far += 1 # you have gained one new item
-                self.Move_To_Cell_client(-1) # move to drop off location
-                self.SetGripper_client(open) # open the gripper
-            else :
-                print("no object found :( \n")
-
-            if index<9 :
-                index += 1 #now we can move to the next cell
-        '''
-            # NOW CHECK FOR CANCELLATION REQUEST
 
       
         # TODO(STUDENTS): Implement your item retrieval loop.
