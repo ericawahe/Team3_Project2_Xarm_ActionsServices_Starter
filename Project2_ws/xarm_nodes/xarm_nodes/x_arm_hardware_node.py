@@ -145,12 +145,12 @@ class XArmHardwareNode(Node):
 
         SERVO_IDS = [1, 2, 3, 4, 5, 6]
         vals = [self.arm.getPosition(servo_id) for servo_id in SERVO_IDS]
-        pose = vals[1]
+        position = vals[1]
 
-        response.position = pose
+        response.position = position
         response.success = True
 
-        self.get_logger().info(f"Gripper position (counts): {counts}")
+        #self.get_logger().info(f"Gripper position (counts): {counts}")
 
         return response
 

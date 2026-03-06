@@ -128,7 +128,7 @@ def main(args=None):
                 resp = client.move_grasped_to_deposit(grasped)
                 print(f'success: {resp.success}, message: {getattr(resp, "message", "")}')
             elif choice == '3':
-                resp = client.get_gripper_position()
+                resp = client.get_gripper_position(position)
                 print(f'success: {resp.success}, position: {resp.position}')
             elif choice == '4':
                 state = prompt_state()
