@@ -74,6 +74,7 @@ class RetrieveItemsActionServer(Node):
             return GoalResponse.REJECT
 
     def cancel_callback(self, goal_handle):
+        feedback_msg = RetrieveItems.Feedback()
         """Accept or reject a cancel request for an active goal.
 
         TODO(STUDENTS): Return CancelResponse.REJECT if cancellation should be refused.
@@ -81,6 +82,7 @@ class RetrieveItemsActionServer(Node):
         #result = self.servo_off_client.call_async(req) = xarm.Controller('USB')
         #node = RetrieveItemsActionServer()
         self.get_logger().info('Received cancel request.')
+        feedback_msg.state = 'Cancelled'
         #result = self.servo_off_client.call_async(req).servoOff()
         #node.destroy_node()
         #rclpy.shutdown()
@@ -110,12 +112,12 @@ class RetrieveItemsActionServer(Node):
 
         # check for cancellation request
         if goal_handle.is_cancel_requested:
+            feedback_msg.state = 'Cancelled'
             req = ServoOff.Request()
             result = self.servo_off_client.call_async(req)
             goal_handle.canceled()
             result.success = False
             result.message = 'Goal cancelled.'
-            feedback_msg.state = 'Cancelled'
             return result
         
         time.sleep(2.0)
@@ -139,12 +141,12 @@ class RetrieveItemsActionServer(Node):
 
             # check for cancellation request
             if goal_handle.is_cancel_requested:
+                feedback_msg.state = 'Cancelled'
                 req = ServoOff.Request()
                 result = self.servo_off_client.call_async(req)
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
-                feedback_msg.state = 'Cancelled'
                 return result
 
             #move to index cell
@@ -158,12 +160,12 @@ class RetrieveItemsActionServer(Node):
 
             # check for cancellation request
             if goal_handle.is_cancel_requested:
+                feedback_msg.state = 'Cancelled'
                 req = ServoOff.Request()
                 result = self.servo_off_client.call_async(req)
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
-                feedback_msg.state = 'Cancelled'
                 return result
             
             #attempt to grasp object
@@ -183,12 +185,12 @@ class RetrieveItemsActionServer(Node):
             if resp.position <= 625: # not fully closed -> object has been grasped!
                 # check for cancellation request
                 if goal_handle.is_cancel_requested:
+                    feedback_msg.state = 'Cancelled'
                     req = ServoOff.Request()
                     result = self.servo_off_client.call_async(req)
                     goal_handle.canceled()
                     result.success = False
                     result.message = 'Goal cancelled.'
-                    feedback_msg.state = 'Cancelled'
                     return result
                 
                 items_so_far += 1
@@ -201,12 +203,12 @@ class RetrieveItemsActionServer(Node):
 
                 # check for cancellation request
                 if goal_handle.is_cancel_requested:
+                    feedback_msg.state = 'Cancelled'
                     req = ServoOff.Request()
                     result = self.servo_off_client.call_async(req)
                     goal_handle.canceled()
                     result.success = False
                     result.message = 'Goal cancelled.'
-                    feedback_msg.state = 'Cancelled'
                     return result
                 
                 req.state = 'open'
@@ -220,12 +222,12 @@ class RetrieveItemsActionServer(Node):
 
             # check for cancellation request
             if goal_handle.is_cancel_requested:
+                feedback_msg.state = 'Cancelled'
                 req = ServoOff.Request()
                 result = self.servo_off_client.call_async(req)
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
-                feedback_msg.state = 'Cancelled'
                 return result
 
 
@@ -260,12 +262,12 @@ class RetrieveItemsActionServer(Node):
         #     return result
         # check for cancellation request
         if goal_handle.is_cancel_requested:
+            feedback_msg.state = 'Cancelled'
             req = ServoOff.Request()
             result = self.servo_off_client.call_async(req)
             goal_handle.canceled()
             result.success = False
             result.message = 'Goal cancelled.'
-            feedback_msg.state = 'Cancelled'
             return result
         
         goal_handle.succeed()
