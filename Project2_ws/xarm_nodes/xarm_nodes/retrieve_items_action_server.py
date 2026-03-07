@@ -115,6 +115,7 @@ class RetrieveItemsActionServer(Node):
             goal_handle.canceled()
             result.success = False
             result.message = 'Goal cancelled.'
+            feedback_msg.state = 'Cancelled'
             return result
         
         time.sleep(2.0)
@@ -143,6 +144,7 @@ class RetrieveItemsActionServer(Node):
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
+                feedback_msg.state = 'Cancelled'
                 return result
 
             #move to index cell
@@ -161,6 +163,7 @@ class RetrieveItemsActionServer(Node):
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
+                feedback_msg.state = 'Cancelled'
                 return result
             
             #attempt to grasp object
@@ -185,6 +188,7 @@ class RetrieveItemsActionServer(Node):
                     goal_handle.canceled()
                     result.success = False
                     result.message = 'Goal cancelled.'
+                    feedback_msg.state = 'Cancelled'
                     return result
                 
                 items_so_far += 1
@@ -202,6 +206,7 @@ class RetrieveItemsActionServer(Node):
                     goal_handle.canceled()
                     result.success = False
                     result.message = 'Goal cancelled.'
+                    feedback_msg.state = 'Cancelled'
                     return result
                 
                 req.state = 'open'
@@ -220,6 +225,7 @@ class RetrieveItemsActionServer(Node):
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
+                feedback_msg.state = 'Cancelled'
                 return result
 
 
@@ -259,6 +265,7 @@ class RetrieveItemsActionServer(Node):
             goal_handle.canceled()
             result.success = False
             result.message = 'Goal cancelled.'
+            feedback_msg.state = 'Cancelled'
             return result
         
         goal_handle.succeed()
