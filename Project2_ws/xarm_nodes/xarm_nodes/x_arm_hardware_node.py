@@ -3,7 +3,7 @@
 import time
 import rclpy
 from rclpy.node import Node
-from xarm_pickup_interfaces.srv import MoveToCell, MoveGraspedToDeposit, GetGripperPosition, SetGripper  # TODO(STUDENTS): Import your service types here.
+from xarm_pickup_interfaces.srv import MoveToCell, MoveGraspedToDeposit, GetGripperPosition, SetGripper, ServoOff  # TODO(STUDENTS): Import your service types here.
 
 try:
     import xarm
@@ -38,6 +38,7 @@ class XArmHardwareNode(Node):
         self.MoveGraspedToDeposit_client = self.create_service(MoveGraspedToDeposit, 'Move_Grasped_To_Deposit', self.MoveGraspedToDeposit_callback)
         self.GetGripperPosition_client = self.create_service(GetGripperPosition, 'GetGripperPosition', self.GetGripperPosition_callback)
         self.SetGripper_client = self.create_service(SetGripper, 'SetGripper', self.SetGripper_callback)
+        self.ServoOff_client = self.create_service(ServoOff, 'ServoOff', self.ServoOff_callback)
         self.get_logger().info('x_arm_hardware_node is running.')
 
     def _connect_usb(self):
@@ -190,6 +191,18 @@ class XArmHardwareNode(Node):
         response.success = True
         response.message = f'Gripper set to {request.state}'
         return response
+    
+    def ServoOff_callback(self, response):
+        if self.arm is None:
+            self.get_logger().error('Arm not connected, cannot set gripper.')
+            response.success = False
+            return response
+        
+        try:
+            self.arm.servoOff()
+            response.success = True
+        except Exception:
+            response.success = False
 
 
 def main(args=None):

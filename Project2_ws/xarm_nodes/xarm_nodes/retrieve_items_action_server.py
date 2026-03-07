@@ -16,7 +16,6 @@ from rclpy.node import Node
 from rclpy.action import ActionServer
 from rclpy.action import CancelResponse, GoalResponse
 from rclpy.executors import MultiThreadedExecutor
-import asyncio
 
 from xarm_pickup_interfaces.action import RetrieveItems
 from xarm_pickup_interfaces.srv import (
@@ -24,12 +23,9 @@ from xarm_pickup_interfaces.srv import (
     MoveGraspedToDeposit,
     GetGripperPosition,
     SetGripper,
+    ServoOff,
 )
-
-try:
-    import xarm
-except ImportError:
-    xarm = None
+import xarm
 arm = xarm.Controller('USB')
 
 class RetrieveItemsActionServer(Node):
@@ -43,6 +39,7 @@ class RetrieveItemsActionServer(Node):
         self.move_grasped_to_deposit_client = self.create_client(MoveGraspedToDeposit, 'Move_Grasped_To_Deposit')
         self.get_gripper_pos_client = self.create_client(GetGripperPosition, 'GetGripperPosition')
         self.set_gripper_client = self.create_client(SetGripper, 'SetGripper')
+        self.servo_off_client = self.create_client(ServoOff, "ServoOff")
 
         # Wait for the service servers to become available.
         self.get_logger().info("Waiting for service servers...")
@@ -50,6 +47,7 @@ class RetrieveItemsActionServer(Node):
         self.move_grasped_to_deposit_client.wait_for_service()
         self.set_gripper_client.wait_for_service()
         self.get_gripper_pos_client.wait_for_service()
+        self.servo_off_client.wait_for_service()
         self.get_logger().info("Hardware services connected.")
 
         self._action_server = ActionServer(
@@ -82,12 +80,12 @@ class RetrieveItemsActionServer(Node):
 
         TODO(STUDENTS): Return CancelResponse.REJECT if cancellation should be refused.
         """
-        
-        node = RetrieveItemsActionServer()
+        #self.arm = xarm.Controller('USB')
+        #node = RetrieveItemsActionServer()
         self.get_logger().info('Received cancel request.')
-        arm.servoOff()
-        node.destroy_node()
-        rclpy.shutdown()
+        #self.arm.servoOff()
+        #node.destroy_node()
+        #rclpy.shutdown()
         return CancelResponse.ACCEPT
 
     async def execute_callback(self, goal_handle):
@@ -114,6 +112,7 @@ class RetrieveItemsActionServer(Node):
 
         # check for cancellation request
         if goal_handle.is_cancel_requested:
+            result = self.ServoOff
             goal_handle.canceled()
             result.success = False
             result.message = 'Goal cancelled.'
@@ -140,6 +139,7 @@ class RetrieveItemsActionServer(Node):
 
             # check for cancellation request
             if goal_handle.is_cancel_requested:
+                self.arm.servoOff()
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
@@ -156,6 +156,7 @@ class RetrieveItemsActionServer(Node):
 
             # check for cancellation request
             if goal_handle.is_cancel_requested:
+                self.arm.servoOff()
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
@@ -178,6 +179,7 @@ class RetrieveItemsActionServer(Node):
             if resp.position <= 625: # not fully closed -> object has been grasped!
                 # check for cancellation request
                 if goal_handle.is_cancel_requested:
+                    self.arm.servoOff()
                     goal_handle.canceled()
                     result.success = False
                     result.message = 'Goal cancelled.'
@@ -193,6 +195,7 @@ class RetrieveItemsActionServer(Node):
 
                 # check for cancellation request
                 if goal_handle.is_cancel_requested:
+                    self.arm.servoOff()
                     goal_handle.canceled()
                     result.success = False
                     result.message = 'Goal cancelled.'
@@ -209,6 +212,7 @@ class RetrieveItemsActionServer(Node):
 
             # check for cancellation request
             if goal_handle.is_cancel_requested:
+                self.arm.servoOff()
                 goal_handle.canceled()
                 result.success = False
                 result.message = 'Goal cancelled.'
@@ -244,7 +248,14 @@ class RetrieveItemsActionServer(Node):
         #     result.success = False
         #     result.message = 'Goal cancelled.'
         #     return result
-
+        # check for cancellation request
+        if goal_handle.is_cancel_requested:
+            self.arm.servoOff()
+            goal_handle.canceled()
+            result.success = False
+            result.message = 'Goal cancelled.'
+            return result
+        
         goal_handle.succeed()
         return result
 

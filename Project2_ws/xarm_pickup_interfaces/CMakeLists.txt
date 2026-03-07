@@ -13,6 +13,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetGripper.srv"
   "srv/GetGripperPosition.srv"
   "srv/MoveGraspedToDeposit.srv"
+  "srv/ServoOff.srv"
   "action/RetrieveItems.action"
 )
 
