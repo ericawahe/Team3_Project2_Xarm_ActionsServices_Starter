@@ -192,7 +192,7 @@ class XArmHardwareNode(Node):
         response.message = f'Gripper set to {request.state}'
         return response
     
-    def ServoOff_callback(self, response):
+    def ServoOff_callback(self, request, response):
         if self.arm is None:
             self.get_logger().error('Arm not connected, cannot set gripper.')
             response.success = False
