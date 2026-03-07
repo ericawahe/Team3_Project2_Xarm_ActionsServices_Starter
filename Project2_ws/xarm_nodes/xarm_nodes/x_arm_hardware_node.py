@@ -18,15 +18,15 @@ class XArmHardwareNode(Node):
 
         # Cell Positions
         self.cell_servo_targets = [
-        [332, 499, 799, 139, 528, 631], # cell 1
-        [332, 498, 852, 158, 528, 510], # cell 2
-        [332, 498, 818, 163, 542, 386], # cell 3
-        [332, 498, 739, 190, 593, 610], # cell 4
-        [332, 498, 767, 170, 565, 507], # cell 5
-        [332, 450, 768, 204, 590, 421], # cell 6
-        [332, 498, 704, 256, 661, 586], # cell 7
-        [332, 498, 736, 261, 651, 510], # cell 8
-        [332, 499, 704, 261, 660, 436], # cell 9
+        [332, 499, 799, 139, 518, 631], # cell 1
+        [332, 498, 852, 158, 518, 510], # cell 2
+        [332, 498, 818, 163, 532, 386], # cell 3
+        [332, 498, 739, 190, 583, 610], # cell 4
+        [332, 498, 767, 170, 555, 507], # cell 5
+        [332, 450, 768, 204, 580, 421], # cell 6
+        [332, 498, 704, 256, 651, 586], # cell 7
+        [332, 498, 736, 261, 641, 510], # cell 8
+        [332, 499, 704, 261, 650, 436], # cell 9
         ]
 
         self._connect_usb()
@@ -120,9 +120,10 @@ class XArmHardwareNode(Node):
             return response
         
         # Move up to avoid obstacles
-        self.arm.setPosition(3, 600, 1300)
-        self.arm.setPosition(5, 500, 1300)
-        time.sleep(2.0)
+        for servo_id in range (1,7):
+            self.arm.setPosition(servo_id, 500, 1300)
+            time.sleep(0.01)
+        time.sleep(1.0)
 
         # Move to drop target
         self.get_logger().info('Moving to drop target')

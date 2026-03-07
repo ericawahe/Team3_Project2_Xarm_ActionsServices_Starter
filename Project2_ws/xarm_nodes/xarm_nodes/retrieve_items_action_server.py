@@ -9,6 +9,7 @@ You will need to:
   3. Fill in goal_callback, cancel_callback, and execute_callback.
 """
 
+
 import time
 import rclpy
 from rclpy.node import Node
@@ -24,8 +25,12 @@ from xarm_pickup_interfaces.srv import (
     GetGripperPosition,
     SetGripper,
 )
-# TODO(STUDENTS): Import your service types here.
 
+try:
+    import xarm
+except ImportError:
+    xarm = None
+arm = xarm.Controller('USB')
 
 class RetrieveItemsActionServer(Node):
     """Action server that executes a RetrieveItems goal."""
@@ -77,7 +82,12 @@ class RetrieveItemsActionServer(Node):
 
         TODO(STUDENTS): Return CancelResponse.REJECT if cancellation should be refused.
         """
+        
+        node = RetrieveItemsActionServer()
         self.get_logger().info('Received cancel request.')
+        arm.servoOff()
+        node.destroy_node()
+        rclpy.shutdown()
         return CancelResponse.ACCEPT
 
     async def execute_callback(self, goal_handle):
@@ -86,15 +96,30 @@ class RetrieveItemsActionServer(Node):
         This method runs in a separate thread via the MultiThreadedExecutor.
         It publishes feedback and returns a Result when the goal finishes.
         """
+
         self.get_logger().info('Executing goal...')
 
         num_items = goal_handle.request.num_items
         feedback_msg = RetrieveItems.Feedback()
         result = RetrieveItems.Result()
 
-      
         index = 0
         items_so_far = 0
+
+        #initialize arm position
+        req = MoveToCell.Request()
+        req.box_index = index
+        future = self.move_to_cell_client.call_async(req)
+        rclpy.spin_until_future_complete(self, future)
+
+        # check for cancellation request
+        if goal_handle.is_cancel_requested:
+            goal_handle.canceled()
+            result.success = False
+            result.message = 'Goal cancelled.'
+            return result
+        
+        time.sleep(2.0)
 
         while (items_so_far < num_items):
 
@@ -113,6 +138,13 @@ class RetrieveItemsActionServer(Node):
             req = MoveGraspedToDeposit.Request()
             req.item_grasped = False
 
+            # check for cancellation request
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                result.success = False
+                result.message = 'Goal cancelled.'
+                return result
+
             #move to index cell
             req = MoveToCell.Request()
             req.box_index = index
@@ -122,6 +154,13 @@ class RetrieveItemsActionServer(Node):
             feedback_msg.state = 'searching'
             feedback_msg.current_box = index
 
+            # check for cancellation request
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                result.success = False
+                result.message = 'Goal cancelled.'
+                return result
+            
             #attempt to grasp object
             req = SetGripper.Request()
             req.state = 'close'
@@ -137,12 +176,32 @@ class RetrieveItemsActionServer(Node):
             
             #attempt to move grasped item to dropoff location
             if resp.position <= 625: # not fully closed -> object has been grasped!
+                # check for cancellation request
+                if goal_handle.is_cancel_requested:
+                    goal_handle.canceled()
+                    result.success = False
+                    result.message = 'Goal cancelled.'
+                    return result
+                
                 items_so_far += 1
                 req = MoveGraspedToDeposit.Request()
                 req.item_grasped = True
                 future = self.move_grasped_to_deposit_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
-            
+                req = SetGripper.Request()
+                time.sleep(1.0)
+
+                # check for cancellation request
+                if goal_handle.is_cancel_requested:
+                    goal_handle.canceled()
+                    result.success = False
+                    result.message = 'Goal cancelled.'
+                    return result
+                
+                req.state = 'open'
+                future = self.set_gripper_client.call_async(req)
+                rclpy.spin_until_future_complete(self, future)
+                time.sleep(1.0)
 
             feedback_msg.items_collected = items_so_far
             goal_handle.publish_feedback(feedback_msg)
