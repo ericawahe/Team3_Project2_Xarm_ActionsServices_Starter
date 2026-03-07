@@ -110,6 +110,8 @@ class RetrieveItemsActionServer(Node):
             req.state = 'open'
             future = self.set_gripper_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
+            req = MoveGraspedToDeposit.Request()
+            req.item_grasped = False
 
             #move to index cell
             req = MoveToCell.Request()
