@@ -90,8 +90,11 @@ class XArmHardwareNode(Node):
             return response
 
         # Move up to avoid obstacles
-        self.arm.setPosition(3, 600, 1300)
-        self.arm.setPosition(5, 500, 1300)
+        #self.arm.setPosition(3, 600, 1300)
+        #self.arm.setPosition(5, 500, 1300)
+        for servo_id in range (1,7):
+            self.arm.setPosition(servo_id, 500, 1300)
+            time.sleep(0.01)
         time.sleep(2.0)
 
         servo_target = self.cell_servo_targets[cell]
