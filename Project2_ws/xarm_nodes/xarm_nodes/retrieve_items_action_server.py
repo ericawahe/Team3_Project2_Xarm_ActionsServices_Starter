@@ -130,11 +130,11 @@ class RetrieveItemsActionServer(Node):
 
 
             req = GetGripperPosition.Request()
-            req.position = 500 #initialize position value
+            req.pose1 = 800 #initialize position value
             future = self.get_gripper_pos_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
             resp = future.result()
-
+            '''
             #attempt to move grasped item to dropoff location
             if resp.position <= 625: # not fully closed -> object has been grasped!
                 items_so_far += 1
@@ -142,7 +142,7 @@ class RetrieveItemsActionServer(Node):
                 req.item_grasped = True
                 future = self.move_grasped_to_deposit_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
-
+            '''
 
             feedback_msg.items_collected = items_so_far
             goal_handle.publish_feedback(feedback_msg)

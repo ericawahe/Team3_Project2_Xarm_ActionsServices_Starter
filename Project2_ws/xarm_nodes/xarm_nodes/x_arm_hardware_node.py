@@ -148,7 +148,7 @@ class XArmHardwareNode(Node):
         #Convert angle to counts (xArm servos use 0.1° per count)
         #counts = int(gripper_angle_deg / 0.1)
 
-        pose = request.position
+        pose = request.pose1
         SERVO_IDS = [1, 2, 3, 4, 5, 6]
         vals = [self.arm.getPosition(servo_id) for servo_id in SERVO_IDS]
         pose = vals[0]
