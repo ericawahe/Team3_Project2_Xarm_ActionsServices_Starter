@@ -1,8 +1,8 @@
-# Placeholder service request for students to replace.
+# Position Service Request
 int32 pose1
 
 ---
-# Placeholder service response for students to replace.
+# Current Position Response
 int32 position
 bool success
 string message
