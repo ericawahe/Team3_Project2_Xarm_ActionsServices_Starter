@@ -74,18 +74,13 @@ class RetrieveItemsActionServer(Node):
             return GoalResponse.REJECT
 
     def cancel_callback(self, goal_handle):
-        feedback_msg = RetrieveItems.Feedback()
-        """Accept or reject a cancel request for an active goal.
+        """Accept or reject a cancel request for an active goal."""
 
-        TODO(STUDENTS): Return CancelResponse.REJECT if cancellation should be refused.
-        """
-        #result = self.servo_off_client.call_async(req) = xarm.Controller('USB')
-        #node = RetrieveItemsActionServer()
+        feedback_msg = RetrieveItems.Feedback()
         self.get_logger().info('Received cancel request.')
         feedback_msg.state = 'Cancelled'
-        #result = self.servo_off_client.call_async(req).servoOff()
-        #node.destroy_node()
-        #rclpy.shutdown()
+        goal_handle.publish_feedback(feedback_msg)
+
         return CancelResponse.ACCEPT
 
     async def execute_callback(self, goal_handle):
@@ -109,29 +104,24 @@ class RetrieveItemsActionServer(Node):
         req.box_index = index
         future = self.move_to_cell_client.call_async(req)
         rclpy.spin_until_future_complete(self, future)
+        time.sleep(2.0) # wait for initialization completion
 
         # check for cancellation request
-        if goal_handle.is_cancel_requested:
-            feedback_msg.state = 'Cancelled'
-            req = ServoOff.Request()
-            result = self.servo_off_client.call_async(req)
-            goal_handle.canceled()
-            result.success = False
-            result.message = 'Goal cancelled.'
-            return result
+        check_cancel(self, goal_handle)
         
-        time.sleep(2.0)
-
         while (items_so_far < num_items):
 
             if index < 9: index +=1 # index initialized as zero, add one to move to the first box and so on
-            else: 
-                print('\nAll cells searched, not enough objects found.')
-                # if index = 9 all boxes searched and not enough objects found so cancel
+            else: # if index = 9 all boxes searched and not enough objects found so cancel
+                self.get_logger().info("All cells searched, not enough objects found.")
+                req = ServoOff.Request()
+                result = self.servo_off_client.call_async(req)
+                goal_handle.canceled()
                 result.success = False
-                result.message = 'Goal failed.'
+                result.message = 'Goal cancelled.'
                 return result
             
+            #ensure gripper is open and initialize item_grasped as false
             req = SetGripper.Request()
             req.state = 'open'
             future = self.set_gripper_client.call_async(req)
@@ -140,136 +130,71 @@ class RetrieveItemsActionServer(Node):
             req.item_grasped = False
 
             # check for cancellation request
-            if goal_handle.is_cancel_requested:
-                feedback_msg.state = 'Cancelled'
-                req = ServoOff.Request()
-                result = self.servo_off_client.call_async(req)
-                goal_handle.canceled()
-                result.success = False
-                result.message = 'Goal cancelled.'
-                return result
+            check_cancel(self, goal_handle)
+
+            feedback_msg.state = 'searching'
+            feedback_msg.items_collected = items_so_far
+            feedback_msg.current_box = index
+            goal_handle.publish_feedback(feedback_msg)
 
             #move to index cell
             req = MoveToCell.Request()
             req.box_index = index
             future = self.move_to_cell_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
-            time.sleep(2.0)
-            feedback_msg.state = 'searching'
-            feedback_msg.current_box = index
+            time.sleep(2.0) # wait untill you're at the cell
 
             # check for cancellation request
-            if goal_handle.is_cancel_requested:
-                feedback_msg.state = 'Cancelled'
-                req = ServoOff.Request()
-                result = self.servo_off_client.call_async(req)
-                goal_handle.canceled()
-                result.success = False
-                result.message = 'Goal cancelled.'
-                return result
+            check_cancel(self, goal_handle)
             
             #attempt to grasp object
+            feedback_msg.state = 'grabbing'
+            goal_handle.publish_feedback(feedback_msg)
             req = SetGripper.Request()
             req.state = 'close'
             future = self.set_gripper_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
-            time.sleep(2.0)
+            time.sleep(2.0) # wait until the gripper has closed to move on
 
+            #check gripper position to see if it has closed all the way
             req = GetGripperPosition.Request()
             req.pose1 = 800 #initialize position value
             future = self.get_gripper_pos_client.call_async(req)
             rclpy.spin_until_future_complete(self, future)
             resp = future.result()
             
-            #attempt to move grasped item to dropoff location
             if resp.position <= 625: # not fully closed -> object has been grasped!
                 # check for cancellation request
-                if goal_handle.is_cancel_requested:
-                    feedback_msg.state = 'Cancelled'
-                    req = ServoOff.Request()
-                    result = self.servo_off_client.call_async(req)
-                    goal_handle.canceled()
-                    result.success = False
-                    result.message = 'Goal cancelled.'
-                    return result
+                check_cancel(self, goal_handle)
                 
+                # update item count and move grasped item to dropoff location
                 items_so_far += 1
+                feedback_msg.state = 'dropping off object'
+                goal_handle.publish_feedback(feedback_msg)
                 req = MoveGraspedToDeposit.Request()
                 req.item_grasped = True
                 future = self.move_grasped_to_deposit_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
                 req = SetGripper.Request()
-                time.sleep(1.0)
+                time.sleep(1.0) #wait until dropoff location has been reached
 
                 # check for cancellation request
-                if goal_handle.is_cancel_requested:
-                    feedback_msg.state = 'Cancelled'
-                    req = ServoOff.Request()
-                    result = self.servo_off_client.call_async(req)
-                    goal_handle.canceled()
-                    result.success = False
-                    result.message = 'Goal cancelled.'
-                    return result
+                check_cancel(self, goal_handle)
                 
+                # release object
                 req.state = 'open'
                 future = self.set_gripper_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
-                time.sleep(1.0)
+                time.sleep(1.0) # wait until gripper has released object
 
             feedback_msg.items_collected = items_so_far
             goal_handle.publish_feedback(feedback_msg)
 
 
             # check for cancellation request
-            if goal_handle.is_cancel_requested:
-                feedback_msg.state = 'Cancelled'
-                req = ServoOff.Request()
-                result = self.servo_off_client.call_async(req)
-                goal_handle.canceled()
-                result.success = False
-                result.message = 'Goal cancelled.'
-                return result
+            check_cancel(self, goal_handle)
 
 
-
-      
-        # TODO(STUDENTS): Implement your item retrieval loop.
-        # A typical loop might:
-        #   1. Determine the next grid box to visit.
-        #   2. Call a hardware service to move the arm.
-        #   3. Call a hardware service to operate the gripper.
-        #   4. Publish feedback after each step.
-        #   5. Check for cancellation and abort cleanly if requested.
-        #
-        # --- Calling a service with await ---
-        # request = YourServiceType.Request()
-        # request.box_index = current_box
-        # response = await self._your_client.call_async(request)
-        # if not response.success:
-        #     self.get_logger().error(f'Service call failed: {response.message}')
-        #
-        # --- Publishing feedback ---
-        # feedback_msg.state = 'searching'
-        # feedback_msg.current_box = current_box
-        # feedback_msg.items_collected = items_so_far
-        # goal_handle.publish_feedback(feedback_msg)
-        #
-        # --- Checking for cancellation ---
-        # if goal_handle.is_cancel_requested:
-        #     goal_handle.canceled()
-        #     result.success = False
-        #     result.message = 'Goal cancelled.'
-        #     return result
-        # check for cancellation request
-        if goal_handle.is_cancel_requested:
-            feedback_msg.state = 'Cancelled'
-            req = ServoOff.Request()
-            result = self.servo_off_client.call_async(req)
-            goal_handle.canceled()
-            result.success = False
-            result.message = 'Goal cancelled.'
-            return result
-        
         goal_handle.succeed()
         return result
 
@@ -294,6 +219,18 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
+
+
+# check for cancellation request
+def check_cancel(self, goal_handle):
+    if goal_handle.is_cancel_requested:
+            req = ServoOff.Request()
+            result = self.servo_off_client.call_async(req)
+            goal_handle.canceled()
+            result.success = False
+            result.message = 'Goal cancelled.'
+            return result
 
 """
 # ================= COPY/PASTE BELOW =================
