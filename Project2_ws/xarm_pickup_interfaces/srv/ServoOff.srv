@@ -1,6 +1,6 @@
-# Placeholder service request for students to replace.
+# Turn off Service Request
 bool onoff
 
 ---
-# Placeholder service response for students to replace.
+# Success state Response
 bool success
