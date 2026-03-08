@@ -1,7 +1,7 @@
-# Placeholder service request for students to replace.
+# Item found Service Request
 bool item_grasped
 
 ---
-# Placeholder service response for students to replace.
+# Move arm command state Response
 bool success
 string message
