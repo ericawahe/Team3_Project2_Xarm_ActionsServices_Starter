@@ -31,9 +31,6 @@ class XArmHardwareNode(Node):
 
         self._connect_usb()
 
-        # TODO(STUDENTS): Add your service servers here. Make sure that all services are defined in the xarm_pickup_interfaces package and that you import them at the top of this file.
-        # Example:
-        # self.create_service(YourServiceType, 'service_name', self.service_callback)
         self.MoveToCell_client = self.create_service(MoveToCell, 'Move_To_Cell', self.MoveToCell_callback)
         self.MoveGraspedToDeposit_client = self.create_service(MoveGraspedToDeposit, 'Move_Grasped_To_Deposit', self.MoveGraspedToDeposit_callback)
         self.GetGripperPosition_client = self.create_service(GetGripperPosition, 'GetGripperPosition', self.GetGripperPosition_callback)
@@ -52,16 +49,6 @@ class XArmHardwareNode(Node):
         except Exception as exc:
             self.get_logger().error(f'Failed to connect to xArm over USB: {exc}')
 
-    # TODO(STUDENTS): Add your service callback methods here.
-    # Suggestions:
-    # 1) Validate inputs before sending commands (e.g. are joint angles within limits?).
-    # 2) Return clear success/failure info to the caller via the response object.
-    #
-    # Example:
-    # def service_callback(self, request, response):
-    #     # ... perform arm action ...
-    #     response.success = True
-    #     return response
     def MoveToCell_callback(self, request, response):
         self.get_logger().info(f"Moving to cell {request.box_index}")
         # special case: index 0 means "initialize all joints to 500 counts".
@@ -91,8 +78,6 @@ class XArmHardwareNode(Node):
             return response
 
         # Move up to avoid obstacles
-        #self.arm.setPosition(3, 600, 1300)
-        #self.arm.setPosition(5, 500, 1300)
         for servo_id in range (1,7):
             self.arm.setPosition(servo_id, 500, 1300)
             time.sleep(0.01)
@@ -138,20 +123,6 @@ class XArmHardwareNode(Node):
 
     def GetGripperPosition_callback(self, request, response):
         self.get_logger().info("Getting gripper position")
-        
-        # Read all servo angles (degrees)
-        #code, angles = self.arm.get_servo_angle(servo_id=1, is_radian=False)
-        '''
-        if code != 0:
-            self.get_logger().error(f"Failed to read servo angles, code={code}")
-            response.success = False
-            return response
-        '''
-        # Assuming gripper is servo 1 (index 0)
-        #gripper_angle_deg = angles[0]
-
-        #Convert angle to counts (xArm servos use 0.1° per count)
-        #counts = int(gripper_angle_deg / 0.1)
 
         pose = request.pose1
         SERVO_IDS = [1, 2, 3, 4, 5, 6]
@@ -160,8 +131,6 @@ class XArmHardwareNode(Node):
 
         response.position = pose
         response.success = True
-
-        #self.get_logger().info(f"Gripper position (counts): {counts}")
 
         return response
 
