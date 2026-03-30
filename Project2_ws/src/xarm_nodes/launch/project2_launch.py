@@ -15,7 +15,7 @@ def generate_launch_description():
         ),
         Node(
             package='xarm_nodes',
-            executable='RetrieveItemsActionServer',
+            executable='retrieve_items_action_server',
             output='screen'
         ),
 
