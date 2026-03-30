@@ -32,6 +32,7 @@ setup(
             'retrieve_items_action_server = xarm_nodes.retrieve_items_action_server:main',
             'service_client = xarm_nodes.service_client:main',
             'arduino = xarm_nodes.arduino:main',
+            'motor_commander = xarm_nodes.motor_commander:main',
             'drive_pickup = xarm_nodes.drive_pickup:main',
         ],
     },

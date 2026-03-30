@@ -15,6 +15,15 @@ def generate_launch_description():
         ),
         Node(
             package='xarm_nodes',
+            executable='RetrieveItemsActionServer',
+            output='screen'
+        ),
+
+
+
+
+        Node(
+            package='xarm_nodes',
             executable='drive_pickup',
             output='screen'
         ),
