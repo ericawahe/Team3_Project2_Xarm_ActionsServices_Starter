@@ -25,6 +25,8 @@ setup(
             'pickup_gui = xarm_nodes.pickup_gui:main',
             'retrieve_items_action_server = xarm_nodes.retrieve_items_action_server:main',
             'service_client = xarm_nodes.service_client:main',
+            'arduino = xarm_nodes.arduino:main',
+            'drive_pickup = xarm_nodes.drive_pickup:main',
         ],
     },
 )

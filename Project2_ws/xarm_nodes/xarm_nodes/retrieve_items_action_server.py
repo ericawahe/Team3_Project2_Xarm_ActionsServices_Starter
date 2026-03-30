@@ -180,13 +180,13 @@ class RetrieveItemsActionServer(Node):
 
                 # check for cancellation request
                 check_cancel(self, goal_handle)
-                
+                '''
                 # release object
                 req.state = 'open'
                 future = self.set_gripper_client.call_async(req)
                 rclpy.spin_until_future_complete(self, future)
                 time.sleep(1.0) # wait until gripper has released object
-
+                '''
             feedback_msg.items_collected = items_so_far
             goal_handle.publish_feedback(feedback_msg)
 
