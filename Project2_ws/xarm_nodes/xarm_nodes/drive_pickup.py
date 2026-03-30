@@ -10,6 +10,7 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 
+#Erica commented this out lol
 from xarm_pickup_interfaces.action import RetrieveItems
 from xarm_pickup_interfaces.srv import SetGripper
 

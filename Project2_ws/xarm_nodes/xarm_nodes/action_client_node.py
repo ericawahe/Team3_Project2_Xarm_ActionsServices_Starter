@@ -10,7 +10,7 @@ Students: replace this node/action naming and goal fields with your own interfac
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from interface_templates.action import IncrementToGoal
+#from interface_templates.action import IncrementToGoal
 
 # ============================== STUDENT TODO ==============================
 # Replace `IncrementToGoal` import with your own action interface.
