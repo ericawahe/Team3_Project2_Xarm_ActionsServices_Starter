@@ -29,7 +29,7 @@ setup(
         'console_scripts': [
             'x_arm_hardware_node = xarm_nodes.x_arm_hardware_node:main',
             'pickup_gui = xarm_nodes.pickup_gui:main',
-            'retrieve_items_action_server = xarm_nodes.retrieve_items_action_server:main',
+            'retrieve_items_action_server = xarm_nodes.RetrieveItemsActionServer:main',
             'service_client = xarm_nodes.service_client:main',
             'arduino = xarm_nodes.arduino:main',
             'motor_commands = xarm_nodes.motor_commands:main',
