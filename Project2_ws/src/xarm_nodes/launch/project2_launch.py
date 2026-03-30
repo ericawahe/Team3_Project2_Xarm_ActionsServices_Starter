@@ -5,7 +5,7 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='xarm_nodes',
-            executable='RetrieveItemsActionServer',
+            executable='arduino',
             output='screen'
         ),
         Node(
