@@ -18,7 +18,7 @@ def generate_launch_description():
             executable='retrieve_items_action_server',
             output='screen'
         ),
-
+        
         Node(
             package='xarm_nodes',
             executable='camera_node',

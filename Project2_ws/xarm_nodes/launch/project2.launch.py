@@ -24,4 +24,5 @@ def generate_launch_description():
             executable='camera_node',
             output='screen'
         ),
+
     ])

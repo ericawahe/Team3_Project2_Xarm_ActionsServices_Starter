@@ -120,68 +120,76 @@ class Turn(Node):
     def __init__(self, ):
         super().__init__('turning_node')
 
-    input = 'T40,90'
-    arduino.write(bytes(input, 'utf-8'))
-    value = arduino.readline().decode('utf-8')
-    i=0
-    while value[:4] != 'Done':
+    def turn(self, input):
+        arduino.write(bytes(input, 'utf-8'))
         value = arduino.readline().decode('utf-8')
-        time.sleep(0.5)
-        i += 1
-        if i>20:
-            break
+        i=0
+        while value[:4] != 'Done':
+            value = arduino.readline().decode('utf-8')
+            time.sleep(0.5)
+            i += 1
+            if i>20:
+                break
 
 
 class DriveForward(Node):
     def __init__(self, ):
         super().__init__('driving_node')
 
-    input = 'F15,50'
-    arduino.write(bytes(input, 'utf-8'))
-    value = arduino.readline().decode('utf-8')
-    i=0
-    while value[:4] != 'Done':
+    def drive_forward(self, input):
+        arduino.write(bytes(input, 'utf-8'))
         value = arduino.readline().decode('utf-8')
+        i=0
+        while value[:4] != 'Done':
+            value = arduino.readline().decode('utf-8')
 
-        time.sleep(0.5)
-        i += 1
-        if i>20:
-            break
+            time.sleep(0.5)
+            i += 1
+            if i>20:
+                break
 
 def main(args=None):
     rclpy.init(args=args)
+    drive_node1 = DriveForward()
+    pickup_node = DrivePickup()
+    drive_node2 = DriveForward()
+    turn_node = Turn()
 
     executor = rclpy.executors.SingleThreadedExecutor()
-    
+    #executor.add_node(drive_node1)
+    #executor.add_node(pickup_node)
+    #executor.add_node(drive_node2)
+
     # First Drive
-    drive_node1 = DriveForward()
+
+
+    drive_node1.drive_forward('F15,50')
     executor.add_node(drive_node1)
     executor.spin_once()
-    executor.remove_node(drive_node1)
-    drive_node1.destroy_node()
-    time.sleep(10.0)
-    '''
+    #executor.remove_node(drive_node1)
+    #drive_node1.destroy_node()
+    
     # Then Pickup
-    pickup_node = DrivePickup()
-    executor.add_node(pickup_node)
+
     pickup_node.send_goal(1)
+    executor.add_node(pickup_node)
     executor.spin_once()
-    executor.remove_node(pickup_node)
-    pickup_node.destroy_node()
+    #executor.remove_node(pickup_node)
+    #pickup_node.destroy_node()
     
     # Then Turn
-    turn_node = Turn()
+    turn_node.turn('T40,90')
     executor.add_node(turn_node)
     executor.spin_once()
-    executor.remove_node(turn_node)
-    turn_node.destroy_node()
-    '''
+    #executor.remove_node(turn_node)
+    #turn_node.destroy_node()
+    
     # Then Drive again
-    drive_node2 = DriveForward()
+    drive_node2.drive_forward('F15,50')
     executor.add_node(drive_node2)
     executor.spin_once()
-    executor.remove_node(drive_node2)
-    drive_node2.destroy_node()
+    #executor.remove_node(drive_node2)
+    #drive_node2.destroy_node()
     
     executor.shutdown()
     rclpy.shutdown()
