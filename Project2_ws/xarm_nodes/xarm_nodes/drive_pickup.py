@@ -120,7 +120,7 @@ class Turn(Node):
     def __init__(self, ):
         super().__init__('turning_node')
 
-    input = 'T40, 90'
+    input = 'T40,90'
     arduino.write(bytes(input, 'utf-8'))
     value = arduino.readline().decode('utf-8')
     i=0
@@ -150,24 +150,40 @@ class DriveForward(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    Drive_Node = DriveForward()
-    Turn_Node = Turn()
 
-    # Arduino
-    rclpy.spin(Drive_Node)
-
-    # Send goal to retrieve items (example: 1 items)
-    #Pickup_Node = DrivePickup()
-    #Pickup_Node.send_goal(1)
-    #rclpy.spin(Pickup_Node)
-
-    rclpy.spin(Turn_Node)
-    rclpy.spin(Drive_Node)
-
-
-    #Pickup_Node.destroy_node()
-    Drive_Node.destroy_node()
-    Turn_Node.destroy_node()
+    executor = rclpy.executors.SingleThreadedExecutor()
+    
+    # First Drive
+    drive_node1 = DriveForward()
+    executor.add_node(drive_node1)
+    executor.spin_once()
+    executor.remove_node(drive_node1)
+    drive_node1.destroy_node()
+    time.sleep(10.0)
+    '''
+    # Then Pickup
+    pickup_node = DrivePickup()
+    executor.add_node(pickup_node)
+    pickup_node.send_goal(1)
+    executor.spin_once()
+    executor.remove_node(pickup_node)
+    pickup_node.destroy_node()
+    
+    # Then Turn
+    turn_node = Turn()
+    executor.add_node(turn_node)
+    executor.spin_once()
+    executor.remove_node(turn_node)
+    turn_node.destroy_node()
+    '''
+    # Then Drive again
+    drive_node2 = DriveForward()
+    executor.add_node(drive_node2)
+    executor.spin_once()
+    executor.remove_node(drive_node2)
+    drive_node2.destroy_node()
+    
+    executor.shutdown()
     rclpy.shutdown()
 
 if __name__ == '__main__':
