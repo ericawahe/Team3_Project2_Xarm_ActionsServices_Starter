@@ -116,75 +116,58 @@ class DrivePickup(Node):
         self.get_logger().info(
             f"Feedback: current_value={feedback.items_collected}, status='{feedback.state}'"
         )
-    
+class Turn(Node):
+    def __init__(self, ):
+        super().__init__('turning_node')
 
-    #call action
-
-    
-    # release object
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = DrivePickup()
-    
-    # Arduino
-    input = 'F15,50'
-    arduino.write(bytes(input, 'utf-8'))
-    value = arduino.readline().decode('utf-8')
-    i = 0
-    time.sleep(5.0)
-    '''
-    while value[:4] != 'Done':
-        value = arduino.readline().decode('utf-8')
-        print(value)
-        time.sleep(0.5)
-        i += 1
-        if i > 20:
-            break
-    '''
-    # Send goal to retrieve items (example: 1 items)
-    node.send_goal(1)
-
-    # Turn
     input = 'T40, 90'
     arduino.write(bytes(input, 'utf-8'))
     value = arduino.readline().decode('utf-8')
-    i = 0
-    time.sleep(5.0)
-    '''
+    i=0
     while value[:4] != 'Done':
         value = arduino.readline().decode('utf-8')
-        print(value)
         time.sleep(0.5)
         i += 1
-        if i > 20:
+        if i>20:
             break
-    '''
-    # Drive
+
+
+class DriveForward(Node):
+    def __init__(self, ):
+        super().__init__('driving_node')
+
     input = 'F15,50'
     arduino.write(bytes(input, 'utf-8'))
     value = arduino.readline().decode('utf-8')
-    i = 0
-    time.sleep(5.0)
-    '''
+    i=0
     while value[:4] != 'Done':
         value = arduino.readline().decode('utf-8')
-        print(value)
+
         time.sleep(0.5)
         i += 1
-        if i > 20:
+        if i>20:
             break
-    '''
-    node.send_goal(0)
-    '''
-    req = SetGripper.Request()
-    req.state = 'open'
-    future = set_gripper_client.call_async(req)
-    rclpy.spin_until_future_complete(self, future)
-    time.sleep(1.0) # wait until gripper has released object
-    '''
-    rclpy.spin(node)
-    node.destroy_node()
+
+def main(args=None):
+    rclpy.init(args=args)
+    Drive_Node = DriveForward()
+    Turn_Node = Turn()
+
+    # Arduino
+    rclpy.spin(Drive_Node)
+
+    # Send goal to retrieve items (example: 1 items)
+    #Pickup_Node = DrivePickup()
+    #Pickup_Node.send_goal(1)
+    #rclpy.spin(Pickup_Node)
+
+    rclpy.spin(Turn_Node)
+    rclpy.spin(Drive_Node)
+
+
+    #Pickup_Node.destroy_node()
+    Drive_Node.destroy_node()
+    Turn_Node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
