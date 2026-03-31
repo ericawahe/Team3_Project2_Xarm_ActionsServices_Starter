@@ -51,6 +51,11 @@ class CameraViewerNode(Node):
         #= 30 Hz display / input timer
         self.timer = self.create_timer(1.0 / 30.0, self.timer_callback)
    
+        ##added...for testing
+        self.get_logger().info(f"Subscribed to: {image_topic}")
+        self.get_logger().info(f"Saving images to: {self.save_directory}")
+
+
     def image_callback(self, msg: Image):
         try:
             self.latest_frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -79,10 +84,11 @@ class CameraViewerNode(Node):
         cv2.imwrite(filepath, self.latest_frame)
         self.get_logger().info(f'Frame saved: {filepath}')
 
+        """
         if not self.action_client.wait_for_server(timeout_sec=1.0):
             self.get_logger().warn('RetrieveItems action server not available.')
             return
-
+        """
 def main(args=None):
     rclpy.init(args=args)
     node = CameraViewerNode()
