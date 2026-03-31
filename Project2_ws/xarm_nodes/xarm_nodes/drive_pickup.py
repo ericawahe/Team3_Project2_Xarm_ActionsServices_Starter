@@ -6,7 +6,6 @@ import tkinter as tk
 from tkinter import ttk
 import serial
 import time
-from Project2_ws.build.xarm_nodes.build.lib.xarm_nodes import arduino
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -14,6 +13,7 @@ from rclpy.node import Node
 
 from xarm_pickup_interfaces.action import RetrieveItems
 from xarm_pickup_interfaces.srv import SetGripper
+arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1)
 
 class DrivePickup(Node):
     """ROS2 action client node for the RetrieveItems action.
@@ -21,7 +21,7 @@ class DrivePickup(Node):
 
     def __init__(self):
         super().__init__('DrivePickup')
-        self.arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1)
+
         self.set_gripper_client = self.create_client(SetGripper, 'SetGripper')
 
         # Create an action client that will call an action hosted by the action server. 
@@ -132,6 +132,8 @@ def main(args=None):
     arduino.write(bytes(input, 'utf-8'))
     value = arduino.readline().decode('utf-8')
     i = 0
+    time.sleep(5.0)
+    '''
     while value[:4] != 'Done':
         value = arduino.readline().decode('utf-8')
         print(value)
@@ -139,7 +141,7 @@ def main(args=None):
         i += 1
         if i > 20:
             break
-
+    '''
     # Send goal to retrieve items (example: 1 items)
     node.send_goal(1)
 
@@ -148,6 +150,8 @@ def main(args=None):
     arduino.write(bytes(input, 'utf-8'))
     value = arduino.readline().decode('utf-8')
     i = 0
+    time.sleep(5.0)
+    '''
     while value[:4] != 'Done':
         value = arduino.readline().decode('utf-8')
         print(value)
@@ -155,12 +159,14 @@ def main(args=None):
         i += 1
         if i > 20:
             break
-        
+    '''
     # Drive
     input = 'F15,50'
     arduino.write(bytes(input, 'utf-8'))
     value = arduino.readline().decode('utf-8')
     i = 0
+    time.sleep(5.0)
+    '''
     while value[:4] != 'Done':
         value = arduino.readline().decode('utf-8')
         print(value)
@@ -168,16 +174,18 @@ def main(args=None):
         i += 1
         if i > 20:
             break
-    
+    '''
     node.send_goal(0)
-    '''    
+    '''
     req = SetGripper.Request()
     req.state = 'open'
     future = set_gripper_client.call_async(req)
     rclpy.spin_until_future_complete(self, future)
     time.sleep(1.0) # wait until gripper has released object
-    rclpy.spin(node)
     '''
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
