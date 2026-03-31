@@ -102,7 +102,7 @@ class DrivePickup(Node):
 
 
         # Shut down ROS after this one-shot demo goal completes.
-        rclpy.shutdown()
+        #rclpy.shutdown()
     
     def feedback_callback(self, feedback_msg):
         """Handle feedback from the action server."""
@@ -155,7 +155,7 @@ def main(args=None):
     drive_node2 = DriveForward()
     turn_node = Turn()
 
-    executor = rclpy.executors.SingleThreadedExecutor()
+    #executor = rclpy.executors.SingleThreadedExecutor()
     #executor.add_node(drive_node1)
     #executor.add_node(pickup_node)
     #executor.add_node(drive_node2)
@@ -164,34 +164,40 @@ def main(args=None):
 
 
     drive_node1.drive_forward('F15,50')
-    executor.add_node(drive_node1)
-    executor.spin_once()
+    #executor.add_node(drive_node1)
+    #executor.spin_once()
     #executor.remove_node(drive_node1)
     #drive_node1.destroy_node()
     
     # Then Pickup
 
     pickup_node.send_goal(1)
-    executor.add_node(pickup_node)
-    executor.spin_once()
+    pickup_node.spin_once()
+    #executor.add_node(pickup_node)
+    #executor.spin_once()
     #executor.remove_node(pickup_node)
     #pickup_node.destroy_node()
-    
+    #pickup_node.get_result_callback() #wait until pickup is done before proceeding to next step
+
     # Then Turn
     turn_node.turn('T40,90')
-    executor.add_node(turn_node)
-    executor.spin_once()
+    #executor.add_node(turn_node)
+    #executor.spin_once()
     #executor.remove_node(turn_node)
     #turn_node.destroy_node()
     
     # Then Drive again
     drive_node2.drive_forward('F15,50')
-    executor.add_node(drive_node2)
-    executor.spin_once()
+    #executor.add_node(drive_node2)
+    #executor.spin_once()
     #executor.remove_node(drive_node2)
     #drive_node2.destroy_node()
     
-    executor.shutdown()
+    #executor.shutdown()
+    drive_node1.destroy_node()
+    pickup_node.destroy_node()
+    drive_node2.destroy_node()
+    turn_node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
