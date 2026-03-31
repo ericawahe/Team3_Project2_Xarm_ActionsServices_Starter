@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 import serial
 import time
+from Project2_ws.build.xarm_nodes.build.lib.xarm_nodes import arduino
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -22,19 +23,6 @@ class DrivePickup(Node):
         super().__init__('DrivePickup')
         self.arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=.1)
         self.set_gripper_client = self.create_client(SetGripper, 'SetGripper')
-
-        # Arduino initialization code
-        input = 'F15,50'
-        self.arduino.write(bytes(input, 'utf-8'))
-        value = self.arduino.readline().decode('utf-8')
-        i = 0
-        while value[:4] != 'Done':
-            value = self.arduino.readline().decode('utf-8')
-            print(value)
-            time.sleep(0.5)
-            i += 1
-            if i > 20:
-                break
 
         # Create an action client that will call an action hosted by the action server. 
         self._action_client = ActionClient(
@@ -84,7 +72,7 @@ class DrivePickup(Node):
     def goal_response_callback(self, future):
         """Handle the response to the goal request."""
         # Read the goal handle from the completed future.
-        goal_handle = future.result().result
+        goal_handle = future.result()
         
         # Exit early if the action server rejected the goal.
         if not goal_handle.accepted:
@@ -109,40 +97,9 @@ class DrivePickup(Node):
         # Extract the result payload from the finished future.
         result = future.result().result
         self.get_logger().info(
-            f"Action result: success={result.success}, final_value={result.final_value}"
+            f"Action result: success={result.success}, final_value={result.items_collected}"
         )
 
-        # Turn
-        input = 'T40, 90'
-        self.arduino.write(bytes(input, 'utf-8'))
-        value = self.arduino.readline().decode('utf-8')
-        i = 0
-        while value[:4] != 'Done':
-            value = self.arduino.readline().decode('utf-8')
-            print(value)
-            time.sleep(0.5)
-            i += 1
-            if i > 20:
-                break
-        
-        # Drive
-        input = 'F15,50'
-        self.arduino.write(bytes(input, 'utf-8'))
-        value = self.arduino.readline().decode('utf-8')
-        i = 0
-        while value[:4] != 'Done':
-            value = self.arduino.readline().decode('utf-8')
-            print(value)
-            time.sleep(0.5)
-            i += 1
-            if i > 20:
-                break
-        
-        req = SetGripper.Request()
-        req.state = 'open'
-        future = self.set_gripper_client.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
-        time.sleep(1.0) # wait until gripper has released object
 
         # Shut down ROS after this one-shot demo goal completes.
         rclpy.shutdown()
@@ -157,7 +114,7 @@ class DrivePickup(Node):
         # Extract the feedback payload for logging.
         feedback = feedback_msg.feedback
         self.get_logger().info(
-            f"Feedback: current_value={feedback.current_value}, status='{feedback.status}'"
+            f"Feedback: current_value={feedback.items_collected}, status='{feedback.state}'"
         )
     
 
@@ -170,11 +127,57 @@ def main(args=None):
     rclpy.init(args=args)
     node = DrivePickup()
     
+    # Arduino
+    input = 'F15,50'
+    arduino.write(bytes(input, 'utf-8'))
+    value = arduino.readline().decode('utf-8')
+    i = 0
+    while value[:4] != 'Done':
+        value = arduino.readline().decode('utf-8')
+        print(value)
+        time.sleep(0.5)
+        i += 1
+        if i > 20:
+            break
+
     # Send goal to retrieve items (example: 1 items)
     node.send_goal(1)
-    
-    rclpy.spin(node)
 
+    # Turn
+    input = 'T40, 90'
+    arduino.write(bytes(input, 'utf-8'))
+    value = arduino.readline().decode('utf-8')
+    i = 0
+    while value[:4] != 'Done':
+        value = arduino.readline().decode('utf-8')
+        print(value)
+        time.sleep(0.5)
+        i += 1
+        if i > 20:
+            break
+        
+    # Drive
+    input = 'F15,50'
+    arduino.write(bytes(input, 'utf-8'))
+    value = arduino.readline().decode('utf-8')
+    i = 0
+    while value[:4] != 'Done':
+        value = arduino.readline().decode('utf-8')
+        print(value)
+        time.sleep(0.5)
+        i += 1
+        if i > 20:
+            break
+    
+    node.send_goal(0)
+    '''    
+    req = SetGripper.Request()
+    req.state = 'open'
+    future = set_gripper_client.call_async(req)
+    rclpy.spin_until_future_complete(self, future)
+    time.sleep(1.0) # wait until gripper has released object
+    rclpy.spin(node)
+    '''
 
 if __name__ == '__main__':
     main()
