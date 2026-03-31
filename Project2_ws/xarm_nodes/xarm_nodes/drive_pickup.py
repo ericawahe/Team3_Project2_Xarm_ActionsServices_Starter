@@ -16,7 +16,6 @@ from xarm_pickup_interfaces.srv import SetGripper
 
 class DrivePickup(Node):
     """ROS2 action client node for the RetrieveItems action.
-
     """
 
     def __init__(self):
