@@ -34,6 +34,7 @@ setup(
             'arduino = xarm_nodes.arduino:main',
             'motor_commands = xarm_nodes.motor_commands:main',
             'drive_pickup = xarm_nodes.drive_pickup:main',
+            'camera_node = xarm_nodes.camera_node:main',
         ],
     },
 )

@@ -65,12 +65,14 @@ class DrivePickup(Node):
         # Build the action goal message and set the requested target value.
         goal_msg = RetrieveItems.Goal()
         goal_msg.num_items = num_items
+
         
         # Ensure the server is still available before sending.
         self._action_client.wait_for_server()
         
         # Send the goal asynchronously and register a feedback callback.
-        self.get_logger().info(f"Sending goal: target={target}")
+
+        self.get_logger().info(f"Sending goal: target={num_items}") #changed from target to num_items
         self._send_goal_future = self._action_client.send_goal_async(
             goal_msg,
             feedback_callback=self.feedback_callback

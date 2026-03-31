@@ -19,8 +19,11 @@ def generate_launch_description():
             output='screen'
         ),
 
-
-
+        Node(
+            package='xarm_nodes',
+            executable='camera_node',
+            output='screen'
+        ),
 
         Node(
             package='xarm_nodes',

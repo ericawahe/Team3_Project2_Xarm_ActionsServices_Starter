@@ -26,7 +26,7 @@ class ActionClientNode(Node):
         # Create an action client that will call an action hosted by the action server. 
         self._action_client = ActionClient(         # Instantiate the action client object
             self,                                   # Define the scope of the client (this node)
-            IncrementToGoal,                        # Specify the action interface (defined in .action file)
+            #IncrementToGoal,                        # Specify the action interface (defined in .action file)
             'increment_to_goal'                     # Specify the name of the action (must match the server's action name) 
         )
 

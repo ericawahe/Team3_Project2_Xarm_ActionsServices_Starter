@@ -18,4 +18,10 @@ def generate_launch_description():
             executable='drive_pickup',
             output='screen'
         ),
+
+        Node(
+            package='xarm_nodes',
+            executable='camera_node',
+            output='screen'
+        ),
     ])
