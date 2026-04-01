@@ -11,7 +11,8 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 from xarm_pickup_interfaces.action import RetrieveItems
-from xarm_pickup_interfaces.srv import SetGripper
+from xarm_pickup_interfaces.srv import SetGripper, MoveGraspedToDeposit
+
 arduino = serial.Serial(port='/dev/ttyACM0', baudrate=115200, timeout=0.1)
 
 ##get_logger instead of print because of ros//maybe better? 
@@ -27,6 +28,17 @@ class DrivePickup(Node):
             'retrieve_items'
         )
 
+        # service clients for drop-off
+        self.move_deposit_client = self.create_client(
+            MoveGraspedToDeposit,
+            'Move_Grasped_To_Deposit'
+        )
+
+        self.set_gripper_client = self.create_client(
+            SetGripper,
+            'SetGripper'
+        )
+
         #service client for image
         self.save_image_client = self.create_client(Trigger, '/save_image')
 
@@ -40,6 +52,46 @@ class DrivePickup(Node):
         while not self.save_image_client.wait_for_service(timeout_sec=1.0):
             pass
         self.get_logger().info('/save_image service available.')
+
+        self.get_logger().info('Waiting for Move_Grasped_To_Deposit service...')
+        while not self.move_deposit_client.wait_for_service(timeout_sec=1.0):
+            pass
+        self.get_logger().info('Move_Grasped_To_Deposit service available.')
+
+        self.get_logger().info('Waiting for SetGripper service...')
+        while not self.set_gripper_client.wait_for_service(timeout_sec=1.0):
+            pass
+        self.get_logger().info('SetGripper service available.')
+#################################################################################
+
+    #drops off item by calling MoveGraspedToDeposit and SetGripper services
+    def drop_item(self):
+        # move grasped item to deposit location
+        move_req = MoveGraspedToDeposit.Request()
+        move_req.item_grasped = True
+
+        self.get_logger().info('Moving arm to deposit location')
+        move_future = self.move_deposit_client.call_async(move_req)
+        rclpy.spin_until_future_complete(self, move_future)
+
+        if move_future.result() is None or not move_future.result().success:
+            self.get_logger().error('Failed to move arm to deposit location')
+            return False
+
+        # open gripper to release block
+        grip_req = SetGripper.Request()
+        grip_req.state = 'open'
+
+        self.get_logger().info('Opening gripper to drop block')
+        grip_future = self.set_gripper_client.call_async(grip_req)
+        rclpy.spin_until_future_complete(self, grip_future)
+
+        if grip_future.result() is None or not grip_future.result().success:
+            self.get_logger().error('Failed to open gripper')
+            return False
+
+        self.get_logger().info('Block dropped successfully')
+        return True
 #################################################################################
 
     #calling node to save an image
@@ -177,22 +229,11 @@ class DrivePickup(Node):
                 self.get_logger().error('Timeout during second drive command')
                 return
 
-        #how to drop???
-        #self.get_logger().info('Drop item step goes here')
-
-        # arduino.reset_input_buffer()
-        # arduino.write(b'(DROP)\n')
-        # value = ''
-        # i = 0
-        # while not value.startswith('Done'):
-        #     value = arduino.readline().decode('utf-8', errors='ignore').strip()
-        #     if value:
-        #         self.get_logger().info(f'Arduino: {value}')
-        #     time.sleep(0.25)
-        #     i += 1
-        #     if i > 40:
-        #         self.get_logger().error('Timeout during drop command')
-        #         return
+        #how to drop?
+        # drop block
+        if not self.drop_item():
+            self.get_logger().error('Drop failed')
+            return
 
         #second image
         if not self.save_image():
