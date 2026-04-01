@@ -114,7 +114,7 @@ class XArmHardwareNode(Node):
         # Move to drop target
         self.get_logger().info('Moving to drop target')
         # drop_target = [700, 457, 151, 577, 213, 99] # off to the right
-        drop_target = [332, 498, 767, 170, 565, 507] # straight in front
+        drop_target = [700, 469, 296, 503, 187, 489] # straight in front
         for servo_id, target in enumerate(drop_target, start=1):
             self.arm.setPosition(servo_id, target, 1300)
             time.sleep(0.01)
