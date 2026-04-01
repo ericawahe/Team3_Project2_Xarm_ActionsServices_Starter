@@ -12,6 +12,8 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from cv_bridge import CvBridge
 
+from std_srvs.srv import Trigger
+
 #from xarm_pickup_interfaces.action import RetrieveItems
 
 
@@ -22,19 +24,12 @@ class CameraViewerNode(Node):
         # Parameters
         self.declare_parameter('image_topic', '/image_raw')
         self.declare_parameter('save_directory', '~/images')
-        #self.declare_parameter('motor_cmd_topic', '/motor-cmd')
-        #self.declare_parameter('enable_motor_keys', True)
-        #self.declare_parameter('enable_pickup_action', True)
-        #self.declare_parameter('default_num_items', 1)
 
-        image_topic = self.get_parameter('image_topic').value
-        save_dir = self.get_parameter('save_directory').value
-        #motor_cmd_topic = self.get_parameter('motor_cmd_topic').value
-        #self.enable_motor_keys = self.get_parameter('enable_motor_keys').value
-        #self.enable_pickup_action = self.get_parameter('enable_pickup_action').value
-        #self.default_num_items = self.get_parameter('default_num_items').value
 
+        image_topic = self.get_parameter('image_topic').get_parameter_value().string_value
+        save_dir = self.get_parameter('save_directory').get_parameter_value().string_value
         self.save_directory = os.path.expanduser(save_dir)
+ 
         os.makedirs(self.save_directory, exist_ok=True)
 
         # Image handling
@@ -49,12 +44,18 @@ class CameraViewerNode(Node):
         )
 
         #= 30 Hz display / input timer
-        self.timer = self.create_timer(1.0 / 30.0, self.timer_callback)
+        #self.timer = self.create_timer(1.0 / 30.0, self.timer_callback)
    
-        ##added...for testing
-        self.get_logger().info(f"Subscribed to: {image_topic}")
-        self.get_logger().info(f"Saving images to: {self.save_directory}")
+        # Service for headless image capture used by orchestrator
+        self.save_service = self.create_service(Trigger, '/save_image', self.save_image_callback)
 
+        self.get_logger().info(
+            f'\n'
+            f'  Camera Viewer started (headless)\n'
+            f'  Subscribed topic : {image_topic}\n'
+            f'  Save directory   : {self.save_directory}\n'
+            f'  Service          : /save_image'
+        )
 
     def image_callback(self, msg: Image):
         try:
@@ -62,33 +63,34 @@ class CameraViewerNode(Node):
         except Exception as e:
             self.get_logger().error(f'cv_bridge conversion error: {e}')
 
-    def timer_callback(self):
+
+    def save_image_callback(self, request, response):
+        del request
         if self.latest_frame is None:
-            return
+            response.success = False
+            response.message = 'No frame available yet.'
+            return response
 
-        cv2.imshow('Camera Viewer', self.latest_frame)
-        key = cv2.waitKey(1) & 0xFF
-
-        if key == ord('s'):
-            self._save_frame()
-
-        elif key == ord('q'):
-            self.get_logger().info('Quit key pressed. Shutting down.')
-            cv2.destroyAllWindows()
-            rclpy.shutdown()
+        try:
+            filepath = self._save_frame()
+            response.success = True
+            response.message = filepath
+            return response
+        except Exception as exc:
+            response.success = False
+            response.message = f'Failed to save frame: {exc}'
+            return response
 
     def _save_frame(self):
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
+        """Save the current frame as a timestamped JPEG."""
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]  # trim µs → ms
         filename = f'capture_{timestamp}.jpg'
         filepath = os.path.join(self.save_directory, filename)
         cv2.imwrite(filepath, self.latest_frame)
         self.get_logger().info(f'Frame saved: {filepath}')
+        return filepath
 
-        """
-        if not self.action_client.wait_for_server(timeout_sec=1.0):
-            self.get_logger().warn('RetrieveItems action server not available.')
-            return
-        """
+
 def main(args=None):
     rclpy.init(args=args)
     node = CameraViewerNode()

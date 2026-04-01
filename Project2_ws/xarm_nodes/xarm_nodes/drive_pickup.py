@@ -45,10 +45,6 @@ class DrivePickup(Node):
         Args:
             num_items: The number of items to retrieve
         """
-        # ========================== STUDENT TODO ==========================
-        # Replace the goal message fields to match your `.action` Goal.
-        # Add any client-side validation before sending a goal.
-        # =================================================================
 
         # Build the action goal message and set the requested target value.
         goal_msg = RetrieveItems.Goal()
